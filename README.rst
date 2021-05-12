@@ -53,7 +53,7 @@ Overview
 
 .. |commits-since| image:: https://img.shields.io/github/commits-since/fonganthonym/python-processingblocks/v0.1.0.svg
     :alt: Commits since latest release
-    :target: https://github.com/fonganthonym/python-processingblocks/compare/v0.1.0...main
+    :target: https://github.com/fonganthonym/python-processingblocks/compare/v0.1.0...master
 
 
 
@@ -72,7 +72,7 @@ Installation
 
 You can also install the in-development version with::
 
-    pip install https://github.com/fonganthonym/python-processingblocks/archive/main.zip
+    pip install https://github.com/fonganthonym/python-processingblocks/archive/master.zip
 
 
 Documentation
