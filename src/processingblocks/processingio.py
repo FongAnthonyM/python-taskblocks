@@ -27,7 +27,9 @@ import time
 # Local Libraries #
 
 
-# Todo: Add cross instance socket reader
+# Todo: Add cross instance socket reader.
+# Todo: Check IO speed. Maybe need to make special case for IO same process to improve performance.
+# Todo: Decide if advancedlogging or warnings should be used.
 # Definitions #
 # Classes #
 class Interrupt(object):
@@ -302,6 +304,7 @@ class BroadcastQueue(object):
         return connection.get()
 
 
+# Handlers #
 class InputsHandler(object):
     # Construction/Destruction
     def __init__(self, name=""):
