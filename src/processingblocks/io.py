@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-""" processingio.py
+""" io.py
 Description:
 """
 __author__ = "Anthony Fong"
 __copyright__ = "Copyright 2021, Anthony Fong"
 __credits__ = ["Anthony Fong"]
 __license__ = ""
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __maintainer__ = "Anthony Fong"
 __email__ = ""
 __status__ = "Prototype"
@@ -23,6 +23,7 @@ import warnings
 import time
 
 # Downloaded Libraries #
+from baseobjects import BaseObject
 
 # Local Libraries #
 
@@ -32,7 +33,7 @@ import time
 # Todo: Decide if advancedlogging or warnings should be used.
 # Definitions #
 # Classes #
-class Interrupt(object):
+class Interrupt(BaseObject):
     # Construction/Destruction
     def __init__(self, master=None):
         self.master = master

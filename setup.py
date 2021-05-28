@@ -71,8 +71,8 @@ setup(
     ],
     python_requires='>=3.6',
     install_requires=[
-        'advancedlogging>=0.1.1',
-        'dynamicwrapper>=1.0.0'
+        'advancedlogging>=0.2.0',
+        'baseobjects>=1.1.1'
     ],
     extras_require={
         "dev": ['pytest>=6.2.3'],
