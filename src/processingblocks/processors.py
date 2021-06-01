@@ -36,12 +36,13 @@ from .tasks import Task, MultiUnitTask
 class SeparateProcess(ObjectWithLogging, StaticWrapper):
     _wrapped_types = [Process()]
     _wrap_attributes = ["_process"]
+    _process = None
     CPU_COUNT = multiprocessing.cpu_count()
     class_loggers = {"separate_process": AdvancedLogger("separate_process")}
 
     # Construction/Destruction
     def __init__(self, target=None, name=None, daemon=False, init=False, kwargs={}):
-        super().__init__()
+        self.loggers = self.class_loggers.copy()
         self._name = name
         self._daemon = daemon
         self._target = target

@@ -14,6 +14,7 @@ __status__ = "Prototype"
 
 # Default Libraries #
 import asyncio
+import pathlib
 import time
 import timeit
 
@@ -26,12 +27,32 @@ import src.processingblocks as processingblocks
 
 
 # Definitions #
+# Functions #
+@pytest.fixture
+def tmp_dir(tmpdir):
+    """A pytest fixture that turn the tmpdir into a Path object."""
+    return pathlib.Path(tmpdir)
+
+
+def log(logger):
+    log_class_ = "separate"
+    log_func = "test_trace_log"
+    log_str = "Test traceback"
+    logger.trace_log(log_class_, log_func, log_str, level=level)
+
+
 # Classes #
 class ClassTest:
     """Default class tests that all classes should pass."""
     class_ = None
     timeit_runs = 100
     speed_tolerance = 200
+
+    def get_log_lines(self, tmp_dir):
+        path = tmp_dir.joinpath(f"{self.logger_name}.log")
+        with path.open() as f_object:
+            lines = f_object.readlines()
+        return lines
 
 
 class BaseTaskTest(ClassTest):
@@ -131,6 +152,34 @@ class TestMultiUnitTask(BaseTaskTest):
         block.is_async = True
         block.run()
         assert 1
+
+
+class TestSeparateProcess(ClassTest):
+    class_ = processingblocks.SeparateProcess
+
+    def test_separate_process(self, tmp_dir):
+        # Setup
+        logger_name = "separate"
+        level = "INFO"
+        path = tmp_dir.joinpath(f"{logger_name}.log")
+
+        logger = advancedlogging.AdvancedLogger(logger_name)
+        logger.setLevel(level)
+        logger.add_default_file_handler(path)
+
+        process = processingblocks.SeparateProcess(target=log, kwargs={"logger": logger})
+        process.start()
+
+        time.sleep(1)
+
+        assert not process.is_alive()
+
+        # Check log file
+        lines = self.get_log_lines(tmp_dir)
+        count = len(lines)
+        assert count == 1
+        assert level in lines[0]
+
 
 
 # Main #
