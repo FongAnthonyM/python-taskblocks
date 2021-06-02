@@ -72,7 +72,7 @@ setup(
     python_requires='>=3.6',
     install_requires=[
         'advancedlogging>=0.2.0',
-        'baseobjects>=1.1.1'
+        'baseobjects>=1.2.0'
     ],
     extras_require={
         "dev": ['pytest>=6.2.3'],

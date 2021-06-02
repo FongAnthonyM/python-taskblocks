@@ -7,7 +7,7 @@ __author__ = "Anthony Fong"
 __copyright__ = "Copyright 2021, Anthony Fong"
 __credits__ = ["Anthony Fong"]
 __license__ = ""
-__version__ = "1.0.0"
+__version__ = "0.1.0"
 __maintainer__ = "Anthony Fong"
 __email__ = ""
 __status__ = "Prototype"
@@ -24,145 +24,189 @@ import typing
 # Downloaded Libraries #
 import advancedlogging
 from advancedlogging import AdvancedLogger, ObjectWithLogging
-from baseobjects import StaticWrapper
+from baseobjects import StaticWrapper, TimeoutWarning
 
 # Local Libraries #
 from .tasks import Task, MultiUnitTask
 
 
 # Definitions #
+# Functions #
+def run_method(obj, method, **kwargs):
+    return getattr(obj, method)(**kwargs)
+
+
 # Classes #
 # Processing #
+# Todo: Add automatic closing to release resources automatically
 class SeparateProcess(ObjectWithLogging, StaticWrapper):
+    """A wrapper for Process which adds restarting and passing a method to be run in a separate process.
+
+    Class Attributes:
+        CPU_COUNT (int): The number of CPUs this computer has.
+        class_loggers (:obj:`dict` of :obj:`AdvancedLogger`): The loggers for this class.
+
+    Attributes:
+        name (str): The name of this object.
+        daemon (bool): Determines if the separate process will continue after the main process exits.
+        target: The function that will be executed by the separate process.
+        args: The arguments for the function to be run in the separate process.
+        kwargs: The keyword arguments for the function to be run the in the separate process.
+        method_wrapper: A wrapper function which executes a method of an object.
+        _process (:obj:`Process`): The Process object that this object is wrapping.
+
+    Args:
+        target: The function that will be executed by the separate process.
+        name: The name of this object.
+        args: The arguments for the function to be run in the separate process.
+        kwargs: The keyword arguments for the function to be run the in the separate process.
+        daemon (bool): Determines if the separate process will continue after the main process exits.
+        init (bool): Determines if this object will construct.
+    """
     _wrapped_types = [Process()]
     _wrap_attributes = ["_process"]
-    _process = None
     CPU_COUNT = multiprocessing.cpu_count()
     class_loggers = {"separate_process": AdvancedLogger("separate_process")}
 
     # Construction/Destruction
-    def __init__(self, target=None, name=None, daemon=False, init=False, kwargs={}):
-        self.loggers = self.class_loggers.copy()
-        self._name = name
-        self._daemon = daemon
-        self._target = target
-        self._target_kwargs = kwargs
+    def __init__(self, target=None, name="", args=(), kwargs={}, daemon=False, init=True):
+        super().__init__()
         self.method_wrapper = run_method
 
         self._process = None
 
         if init:
-            self.construct()
-
-    @property
-    def name(self):
-        if self._process is not None:
-            return self._process.name
-        else:
-            return self._name
-
-    @name.setter
-    def name(self, value):
-        self._name = value
-        if self._process is not None:
-            self._process.name = value
+            self.construct(target, name, args, kwargs, daemon)
 
     @property
     def daemon(self):
-        if self._process is not None:
-            return self._process.daemon
-        else:
-            return self._daemon
+        """Determines if the separate process will continue after the main process exits, gets from _process."""
+        return self._daemon
 
     @daemon.setter
     def daemon(self, value):
         self._daemon = value
-        if self._process is not None:
-            self._process.daemon = value
 
     @property
     def target(self):
-        if self.process is not None:
-            return self._process._target
-        else:
-            return self._target
+        """The function that will be executed by the separate process, gets from _process."""
+        return self._target
 
     @target.setter
     def target(self, value):
         self._target = value
-        if self._process is not None:
-            self._process = Process(target=value, name=self.name, daemon=self.daemon, kwargs=self.target_kwargs)
 
     @property
-    def target_kwargs(self):
-        if self._process is not None:
-            return self._process._kwargs
-        else:
-            return self._target_kwargs
+    def args(self):
+        """The arguments for the function to be run in the separate process, gets from _process."""
+        return self._args
 
-    @target_kwargs.setter
-    def target_kwargs(self, value):
-        self._target_kwargs = value
-        if self._process is not None:
-            self._process = Process(target=self._target, name=self.name, daemon=self.daemon, kwargs=value)
+    @args.setter
+    def args(self, value):
+        self._args = tuple(value)
 
     @property
-    def process(self):
-        return self._process
+    def kwargs(self):
+        """The keyword arguments for the function to be run the in the separate process, get from _process."""
+        return self._kwargs
 
-    @process.setter
-    def process(self, value):
-        self._process = value
-        self._name = value.name
-        self._daemon = value.daemon
-        self._target = value._target
-        self._target_kwargs = value._kwargs
+    @kwargs.setter
+    def kwargs(self, value):
+        self._kwargs = dict(value)
 
     # Constructors
-    def construct(self, target=None, daemon=False, **kwargs):
-        self.create_process(target, daemon, **kwargs)
+    def construct(self, target=None, name=None, args=(), kwargs={}, daemon=False):
+        """Constructs this object.
+
+        Args:
+            target: The function that will be executed by the separate process.
+            name: The name of this object.
+            args: The arguments for the function to be run in the separate process.
+            kwargs: The keyword arguments for the function to be run the in the separate process.
+            daemon (bool): Determines if the separate process will continue after the main process exits.
+        """
+        if name is not None:
+            self.name = name
+
+        self.create_process(target, name, args, kwargs, daemon)
 
     # State
     def is_alive(self):
+        """Checks if the process is running."""
         if self._process is None:
             return False
         else:
             return self._process.is_alive()
 
     # Process
-    def create_process(self, target=None, daemon=False, **kwargs):
-        if target is not None:
-            self.target = target
-        if kwargs:
-            self.target_kwargs = kwargs
-        if daemon is not None:
-            self.daemon = daemon
-        self._process = Process(target=self.target, name=self.name, daemon=self.daemon, kwargs=self.target_kwargs)
+    def create_process(self, target=None, name=None, args=(), kwargs={}, daemon=False):
+        """Creates a Process object to be stored within this object.
+
+        Args:
+            target: The function that will be executed by the separate process.
+            name: The name of this object.
+            args: The arguments for the function to be run in the separate process.
+            kwargs: The keyword arguments for the function to be run the in the separate process.
+            daemon (bool): Determines if the separate process will continue after the main process exits.
+        """
+        if name is None:
+            name = self.name
+
+        if self._process is not None:
+            if target is None:
+                target = self._target
+            if daemon is not None:
+                daemon = self._daemon
+            if not args:
+                args = self._args
+            if not kwargs:
+                kwargs = self._kwargs
+
+        self._process = Process(target=target, name=name, daemon=daemon, args=args, kwargs=kwargs)
 
     def set_process(self, process):
-        self.process = process
+        """Set this object's process to a new one.
 
-    # Task
-    def target_object_method(self, obj, method, kwargs={}):
+        Args:
+            process (:obj:`Process`): The new process.
+        """
+        self._process = process
+
+    # Target
+    def target_object_method(self, obj, method, args=(), kwargs={}):
+        """Set the target to be a method of an object.
+
+        Args:
+            obj: The object the method will be executed from.
+            method (str): The name of the method in the object.
+            args: Arguments to be used by the method.
+            kwargs: The keywords arguments to be used by the method.
+        """
         kwargs["obj"] = obj
         kwargs["method"] = method
-        self.target_kwargs = kwargs
-        self.process = Process(target=self.method_wrapper, name=self.name, daemon=self.daemon, kwargs=self.target_kwargs)
+        self.create_process(target=self.method_wrapper, args=args, kwargs=kwargs)
 
     # Execution
     def start(self):
+        """Starts running the process."""
         self.trace_log("separate_process", "start", "spawning new process...", name=self.name, level="DEBUG")
         self._process.start()
 
     async def join_async(self, timeout=None, interval=0.0):
+        """Asynchronously, wait for the process to return/exit.
+
+        Args:
+            timeout (float, optional): The time in seconds to wait for the process to exit.
+            interval (float, optional): The time in seconds between each queue query.
+        """
         start_time = time.perf_counter()
         while self._process.join(0) is None:
             await asyncio.sleep(interval)
             if timeout is not None and (time.perf_counter() - start_time) >= timeout:
-                return None
+                warnings.warn(TimeoutWarning("'join_async'"), stacklevel=2)
 
     def join_async_task(self, timeout=None, interval=0.0):
-        """Creates waiting for this object to terminate as an asyncio task.
+        """Creates an asyncio task which waits for the process to return/exit.
 
         Args:
             timeout (float): The time in seconds to wait for termination.
@@ -171,14 +215,16 @@ class SeparateProcess(ObjectWithLogging, StaticWrapper):
         return asyncio.create_task(self.join_async(timeout, interval))
 
     def restart(self):
+        """Restarts the process."""
         if isinstance(self._process, Process):
-            if self.process.is_alive():
+            if self._process.is_alive():
                 self._process.terminate()
-        self._process = Process(target=self.target, name=self.name, daemon=self.daemon, kwargs=self.target_kwargs)
+        self.create_process()
         self._process.start()
 
     def close(self):
-        if isinstance(self.process, Process):
+        """Closes the process and frees the resources."""
+        if isinstance(self._process, Process):
             if self._process.is_alive():
                 self._process.terminate()
             self._process.close()
@@ -550,8 +596,4 @@ class ProcessingCluster(ProcessingUnit):
         if join:
             await self.join_async(timeout=timeout, interval=interval)
 
-
-# Functions #
-def run_method(obj, method, **kwargs):
-    return getattr(obj, method)(**kwargs)
 

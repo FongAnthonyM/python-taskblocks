@@ -34,11 +34,12 @@ def tmp_dir(tmpdir):
     return pathlib.Path(tmpdir)
 
 
-def log(logger):
+def log(logger, level):
     log_class_ = "separate"
     log_func = "test_trace_log"
     log_str = "Test traceback"
     logger.trace_log(log_class_, log_func, log_str, level=level)
+    pass
 
 
 # Classes #
@@ -48,8 +49,8 @@ class ClassTest:
     timeit_runs = 100
     speed_tolerance = 200
 
-    def get_log_lines(self, tmp_dir):
-        path = tmp_dir.joinpath(f"{self.logger_name}.log")
+    def get_log_lines(self, tmp_dir, logger_name):
+        path = tmp_dir.joinpath(f"{logger_name}.log")
         with path.open() as f_object:
             lines = f_object.readlines()
         return lines
@@ -167,19 +168,18 @@ class TestSeparateProcess(ClassTest):
         logger.setLevel(level)
         logger.add_default_file_handler(path)
 
-        process = processingblocks.SeparateProcess(target=log, kwargs={"logger": logger})
+        process = processingblocks.SeparateProcess(target=log, kwargs={"logger": logger, "level": level})
         process.start()
 
-        time.sleep(1)
+        time.sleep(3)
 
         assert not process.is_alive()
 
         # Check log file
-        lines = self.get_log_lines(tmp_dir)
+        lines = self.get_log_lines(tmp_dir, logger_name)
         count = len(lines)
         assert count == 1
         assert level in lines[0]
-
 
 
 # Main #
