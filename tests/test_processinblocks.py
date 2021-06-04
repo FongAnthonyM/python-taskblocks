@@ -15,6 +15,7 @@ __status__ = "Prototype"
 # Default Libraries #
 import asyncio
 import pathlib
+import pickle
 import time
 import timeit
 
@@ -56,8 +57,52 @@ class ClassTest:
         return lines
 
 
+class TestSeparateProcess(ClassTest):
+    class_ = processingblocks.SeparateProcess
+
+    def test_pickle(self, tmp_dir):
+        logger_name = "separate"
+        level = "INFO"
+        path = tmp_dir.joinpath(f"{logger_name}.log")
+
+        logger = advancedlogging.AdvancedLogger(logger_name)
+        logger.setLevel(level)
+        logger.add_default_file_handler(path)
+
+        obj = processingblocks.SeparateProcess(target=log, kwargs={"logger": logger, "level": level})
+        pickle_jar = pickle.dumps(obj)
+        new_obj = pickle.loads(pickle_jar)
+        assert set(dir(new_obj)) == set(dir(obj))
+
+    def test_separate_process(self, tmp_dir):
+        # Setup
+        logger_name = "separate"
+        level = "INFO"
+        path = tmp_dir.joinpath(f"{logger_name}.log")
+
+        logger = advancedlogging.AdvancedLogger(logger_name)
+        logger.setLevel(level)
+        logger.add_default_file_handler(path)
+
+        process = processingblocks.SeparateProcess(target=log, kwargs={"logger": logger, "level": level}, delay=True)
+        process.construct()
+        process.start()
+
+        time.sleep(3)
+
+        assert not process.is_alive()
+
+        # Check log file
+        lines = self.get_log_lines(tmp_dir, logger_name)
+        count = len(lines)
+        assert count == 1
+        assert level in lines[0]
+
+
 class BaseTaskTest(ClassTest):
     class ProduceTask(processingblocks.Task):
+        log_path = None
+
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
             self.number = 0
@@ -65,9 +110,9 @@ class BaseTaskTest(ClassTest):
         def build_loggers(self):
             logger = advancedlogging.AdvancedLogger("TaskTest")
             logger.setLevel("DEBUG")
-            logger.add_default_stream_handler()
+            logger.add_default_file_handler(self.log_path)
             self.loggers["TaskTest"] = logger
-            self.class_loggers["task_root"].add_default_stream_handler()
+            self.class_loggers["task_root"].add_default_file_handler(self.log_path)
             self.class_loggers["task_root"].setLevel("DEBUG")
 
         def create_io(self):
@@ -124,6 +169,33 @@ class TestTask(BaseTaskTest):
         asyncio.run(temp_run())
         assert 1
 
+    def test_separate_process(self, tmp_dir):
+        logger_name = "task_separate"
+        path = tmp_dir.joinpath(f"{logger_name}.log")
+        self.ProduceTask.log_path = path
+        produce_unit = self.ProduceTask(name="ProduceTask")
+        modify_unit = self.ModifyTask(name="ModifyTask")
+
+        produce_unit.is_process = True
+        modify_unit.link_inputs(produce_unit)
+
+        async def stop():
+            assert produce_unit.is_processing()
+            await asyncio.sleep(10)
+            produce_unit.terminate()
+            modify_unit.terminate()
+
+        async def temp_run():
+            pro_a_task = produce_unit.start_async_task()
+            mod_a_task = modify_unit.start_async_task()
+            stop_task = asyncio.create_task(stop())
+
+            await asyncio.gather(pro_a_task, mod_a_task, stop_task)
+            print("Success")
+
+        asyncio.run(temp_run())
+        assert 1
+
 
 class TestMultiUnitTask(BaseTaskTest):
     class MultiUnitGroup(processingblocks.MultiUnitTask):
@@ -153,33 +225,6 @@ class TestMultiUnitTask(BaseTaskTest):
         block.is_async = True
         block.run()
         assert 1
-
-
-class TestSeparateProcess(ClassTest):
-    class_ = processingblocks.SeparateProcess
-
-    def test_separate_process(self, tmp_dir):
-        # Setup
-        logger_name = "separate"
-        level = "INFO"
-        path = tmp_dir.joinpath(f"{logger_name}.log")
-
-        logger = advancedlogging.AdvancedLogger(logger_name)
-        logger.setLevel(level)
-        logger.add_default_file_handler(path)
-
-        process = processingblocks.SeparateProcess(target=log, kwargs={"logger": logger, "level": level})
-        process.start()
-
-        time.sleep(3)
-
-        assert not process.is_alive()
-
-        # Check log file
-        lines = self.get_log_lines(tmp_dir, logger_name)
-        count = len(lines)
-        assert count == 1
-        assert level in lines[0]
 
 
 # Main #

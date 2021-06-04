@@ -22,14 +22,17 @@ import typing
 
 # Downloaded Libraries #
 from advancedlogging import AdvancedLogger, ObjectWithLogging
+from baseobjects import TimeoutWarning
 
 # Local Libraries #
 from .io import InputsHandler, OutputsHandler
+from .processors import SeparateProcess
 
 
 # Definitions #
 # Classes #
 # Tasks #
+# Todo: Maybe add some warning when editing a Task while it is running.
 class Task(ObjectWithLogging):
     """The most basic block unit.
 
@@ -80,6 +83,7 @@ class Task(ObjectWithLogging):
         self.name = ""
         self.async_loop = asyncio.get_event_loop()
         self._is_async = True
+        self._is_process = False
         self.allow_setup = True
         self.allow_closure = True
         self.use_async = True
@@ -94,6 +98,8 @@ class Task(ObjectWithLogging):
 
         self.inputs = None
         self.outputs = None
+
+        self.process = None
 
         self._execute_setup = None
         self._execute_task = None
@@ -121,6 +127,26 @@ class Task(ObjectWithLogging):
     @is_async.setter
     def is_async(self, value):
         self._is_async = value
+        if self.is_alive():
+            raise ValueError  # Todo: Handle this
+
+    @property
+    def is_process(self):
+        """bool: If this object will run in a separate process. It will detect if it is in a process while running.
+
+        When set it will raise an error if the Task is running.
+        """
+        if self.is_alive():
+            if self.process is not None and self.process.is_alive():
+                return True
+            else:
+                return False
+        else:
+            return self._is_process
+
+    @is_process.setter
+    def is_process(self, value):
+        self._is_process = value
         if self.is_alive():
             raise ValueError  # Todo: Handle this
 
@@ -171,9 +197,20 @@ class Task(ObjectWithLogging):
         """Checks if this object is currently running.
 
         Returns:
-            bool: If this object is currently running
+            bool: If this object is currently running.
         """
         return self.alive_event.is_set()
+
+    def is_processing(self):
+        """Checks if this object is currently running in a process.
+
+        Returns:
+            bool: If this object is currently running in a process.
+        """
+        try:
+            return self.process.is_alive()
+        except AttributeError:
+            return False
 
     # IO
     def construct_io(self):
@@ -201,7 +238,33 @@ class Task(ObjectWithLogging):
         """Abstract method that gives a place to the io to other objects."""
         pass
 
-    # Multiprocess Event
+    # Separate Process
+    def create_process(self, target=None, args=(), kwargs={}, daemon=None, delay=True):
+        """Creates a separate process for this task.
+
+        Args:
+            target: The function that will be executed by the separate process.
+            args: The arguments for the function to be run in the separate process.
+            kwargs: The keyword arguments for the function to be run the in the separate process.
+            daemon (bool): Determines if the separate process will continue after the main process exits.
+            delay (bool): Determines if the Process will be constructed now or later.
+        """
+        self.process = SeparateProcess(target, self.name, args, kwargs, daemon, delay)
+
+    def set_process_method(self, method, args=(), kwargs={}):
+        """Sets the separate process's target to a method from this object.
+
+        Args:
+            method (str): The name of the method to run from this object.
+            args: The arguments for the function to be run in the separate process.
+            kwargs: The keyword arguments for the function to be run the in the separate process.
+
+        Returns:
+
+        """
+        self.process.target_object_method(self, method, args, kwargs)
+
+    # Event
     def create_event(self, name):
         """Creates a new Event object and stores.
 
@@ -223,7 +286,7 @@ class Task(ObjectWithLogging):
         """
         self.events[name] = event
 
-    # Multiprocess Lock
+    # Lock
     def create_lock(self, name):
         """Creates a new Lock object and stores.
 
@@ -464,6 +527,40 @@ class Task(ObjectWithLogging):
         else:
             self.trace_log("task_root", func_name, "skipping closure", name=self.name, level="DEBUG")
 
+    # Separate Process Execution
+    def _execute_process(self, method, asyn=None, s_kwargs={}, t_kwargs={}, c_kwargs={}):
+        """Starts running a method from this object in separate process.
+
+        Args:
+            method (str): The name of the method to run in a separate process.
+            asyn (bool): Determines if this object should run asynchronously.
+            s_kwargs (dict): The keyword arguments for the setup.
+            t_kwargs (dict): The keyword arguments for the task.
+            c_kwargs (dict): The keyword arguments for the closure.
+        """
+        kwargs = {"process": False,
+                  "asyn": asyn,
+                  "s_kwargs": s_kwargs,
+                  "t_kwargs": t_kwargs,
+                  "c_kwargs": c_kwargs}
+
+        if self.process is None:
+            self.create_process()
+        self.set_process_method(method, kwargs=kwargs)
+        self.process.start()
+
+    async def _execute_process_async(self, method, asyn=None, s_kwargs={}, t_kwargs={}, c_kwargs={}):
+        """Asynchronously starts running a method from this object in separate process.
+
+        Args:
+            method (str): The name of the method to run in a separate process.
+            asyn (bool): Determines if this object should run asynchronously.
+            s_kwargs (dict): The keyword arguments for the setup.
+            t_kwargs (dict): The keyword arguments for the task.
+            c_kwargs (dict): The keyword arguments for the closure.
+        """
+        self._execute_process(method, asyn, s_kwargs, t_kwargs, c_kwargs)
+
     # Normal Execution
     def run_normal(self, s_kwargs={}, t_kwargs={}, c_kwargs={}):
         """Executes a single run of the task with setup and closure.
@@ -613,10 +710,14 @@ class Task(ObjectWithLogging):
         Args:
             timeout (float): The time in seconds to wait for termination.
         """
-        start_time = time.perf_counter()
-        while self.alive_event.is_set():
-            if timeout is not None and (time.perf_counter() - start_time) >= timeout:
-                return None
+        if self.is_process:
+            self.process.join(timeout)
+        else:
+            start_time = time.perf_counter()
+            while self.alive_event.is_set():
+                if timeout is not None and (time.perf_counter() - start_time) >= timeout:
+                    warnings.warn(TimeoutWarning("'join_normal'"), stacklevel=2)
+                    return
 
     async def join_async(self, timeout=None, interval=0.0):
         """Asynchronously wait until this object terminates.
@@ -625,90 +726,123 @@ class Task(ObjectWithLogging):
             timeout (float): The time in seconds to wait for termination.
             interval (float): The time in seconds between termination checks. Zero means it will check ASAP.
         """
-        start_time = time.perf_counter()
-        while self.alive_event.is_set():
-            await asyncio.sleep(interval)
-            if timeout is not None and (time.perf_counter() - start_time) >= timeout:
-                return None
+        if self.is_process:
+            await self.process.join_async(timeout, interval)
+        else:
+            start_time = time.perf_counter()
+            while self.alive_event.is_set():
+                await asyncio.sleep(interval)
+                if timeout is not None and (time.perf_counter() - start_time) >= timeout:
+                    warnings.warn(TimeoutWarning("'join_async'"), stacklevel=2)
+                    return
 
     # Full Execution
-    def run(self, asyn=None, s_kwargs={}, t_kwargs={}, c_kwargs={}):
+    def run(self, process=None, asyn=None, s_kwargs={}, t_kwargs={}, c_kwargs={}):
         """Executes a single run of the task and determines if the async version should be run.
 
         Args:
+            process (bool): Determines if this object should run in a separate process.
             asyn (bool): Determines if this object should run asynchronously.
             s_kwargs (dict): The keyword arguments for the setup.
             t_kwargs (dict): The keyword arguments for the task.
             c_kwargs (dict): The keyword arguments for the closure.
         """
+        # Set separate process
+        if process is not None:
+            self._is_process = process
+
         # Set async
         if asyn is not None:
-            self.is_async = asyn
+            self._is_async = asyn
 
         # Use Correct Context
-        if self.is_async:
+        if self._is_process:
+            self._execute_process("run", asyn, s_kwargs, t_kwargs, c_kwargs)
+        elif self._is_async:
             asyncio.run(self.run_coro(s_kwargs, t_kwargs, c_kwargs))
         else:
             self.run_normal(s_kwargs, t_kwargs, c_kwargs)
 
-    def run_async_task(self, s_kwargs={}, t_kwargs={}, c_kwargs={}):
+    def run_async_task(self, process=None, s_kwargs={}, t_kwargs={}, c_kwargs={}):
         """Creates a single execution of this task as an asyncio task.
 
         Args:
+            process (bool): Determines if this object should run in a separate process.
             s_kwargs (dict): The keyword arguments for the setup.
             t_kwargs (dict): The keyword arguments for the task.
             c_kwargs (dict): The keyword arguments for the closure.
         """
-        # Set async
-        self.is_async = True
+        # Set separate process
+        if process is not None:
+            self.is_process = process
 
         # Flag On
         self.alive_event.set()
 
         # Create Async Event
-        return asyncio.create_task(self.run_coro(s_kwargs, t_kwargs, c_kwargs))
+        if self._is_process:
+            return asyncio.create_task(self._execute_process_async("run", None, s_kwargs, t_kwargs, c_kwargs))
+        else:
+            # Set async
+            self._is_async = True
 
-    def start(self, asyn=None, s_kwargs={}, t_kwargs={}, c_kwargs={}):
+            return asyncio.create_task(self.run_coro(s_kwargs, t_kwargs, c_kwargs))
+
+    def start(self, process=None, asyn=None, s_kwargs={}, t_kwargs={}, c_kwargs={}):
         """Starts the execution of multiple runs of the task and determines if the async version should be run.
 
         Args:
+            process (bool): Determines if this object should run in a separate process.
             asyn (bool): Determines if this object should run asynchronously.
             s_kwargs (dict): The keyword arguments for the setup.
             t_kwargs (dict): The keyword arguments for the task.
             c_kwargs (dict): The keyword arguments for the closure.
         """
+        # Set separate process
+        if process is not None:
+            self._is_process = process
+
         # Set async
         if asyn is not None:
-            self.is_async = asyn
+            self._is_async = asyn
 
         # Use Correct Context
-        if self.is_async:
+        if self._is_process:
+            self._execute_process("start", asyn, s_kwargs, t_kwargs, c_kwargs)
+        elif self.is_async:
             asyncio.run(self.start_coro(s_kwargs, t_kwargs, c_kwargs))
         else:
             self.start_normal(s_kwargs, t_kwargs, c_kwargs)
 
-    def start_async_task(self, s_kwargs={}, t_kwargs={}, c_kwargs={}):
+    def start_async_task(self, process=None, s_kwargs={}, t_kwargs={}, c_kwargs={}):
         """Creates the continuous execution of this task as an asyncio task.
 
         Args:
+            process (bool): Determines if this object should run in a separate process.
             s_kwargs (dict): The keyword arguments for the setup.
             t_kwargs (dict): The keyword arguments for the task.
             c_kwargs (dict): The keyword arguments for the closure.
         """
-        # Set async
-        self.is_async = True
+        # Set separate process
+        if process is not None:
+            self.is_process = process
 
         # Flag On
         self.alive_event.set()
 
         # Create Async Event
-        return asyncio.create_task(self.start_coro(s_kwargs, t_kwargs, c_kwargs))
+        if self._is_process:
+            return asyncio.create_task(self._execute_process_async("start", None, s_kwargs, t_kwargs, c_kwargs))
+        else:
+            # Set async
+            self._is_async = True
+
+            return asyncio.create_task(self.start_coro(s_kwargs, t_kwargs, c_kwargs))
 
     def join(self, timeout=None, interval=0.0):
         """Wait until this object terminates and determines if the async version should be run.
 
         Args:
-            asyn (bool): Determines if this object should run asynchronously.
             timeout (float): The time in seconds to wait for termination.
             interval (float): The time in seconds between termination checks. Zero means it will check ASAP.
         """
