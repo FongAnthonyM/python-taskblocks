@@ -147,7 +147,10 @@ class BaseTaskTest(ClassTest):
 
 
 class TestTask(BaseTaskTest):
-    def test_task(self):
+    def test_task(self, tmp_dir):
+        logger_name = "task_separate"
+        path = tmp_dir.joinpath(f"{logger_name}.log")
+        self.ProduceTask.log_path = path
         produce_unit = self.ProduceTask(name="ProduceTask")
         modify_unit = self.ModifyTask(name="ModifyTask")
 
@@ -173,6 +176,7 @@ class TestTask(BaseTaskTest):
         logger_name = "task_separate"
         path = tmp_dir.joinpath(f"{logger_name}.log")
         self.ProduceTask.log_path = path
+
         produce_unit = self.ProduceTask(name="ProduceTask")
         modify_unit = self.ModifyTask(name="ModifyTask")
 
