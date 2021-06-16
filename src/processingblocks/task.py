@@ -45,6 +45,8 @@ class Task(ObjectWithLogging):
         loggers (dict): A collection of loggers used by this object. The keys are the names of the different loggers.
         name (str): The name of this object.
         async_loop: The event loop to assign the async methods to.
+        _is_async (bool): Determines if this object will be asynchronous.
+        _is_process (bool): Determines if this object will run in a separate process.
         allow_setup (bool): Determines if setup will be run.
         allow_closure (bool): Determines if closure will be run.
         use_async (bool): Determines if async methods will be used by default.
@@ -839,18 +841,23 @@ class Task(ObjectWithLogging):
 
             return asyncio.create_task(self.start_coro(s_kwargs, t_kwargs, c_kwargs))
 
-    def join(self, timeout=None, interval=0.0):
+    def join(self, asyn=False, timeout=None, interval=0.0):
         """Wait until this object terminates and determines if the async version should be run.
 
         Args:
+            asyn (bool): Determines if the join will be asynchronous.
             timeout (float): The time in seconds to wait for termination.
             interval (float): The time in seconds between termination checks. Zero means it will check ASAP.
+
+        Returns:
+            Can return None or an async_io task object if this function is called with async on.
         """
         # Use Correct Context
-        if self.is_async:
-            asyncio.run(self.join_async(timeout, interval))
+        if asyn:
+            return self.join_async_task(timeout, interval)
         else:
             self.join_normal(timeout)
+            return None
 
     def join_async_task(self, timeout=None, interval=0.0):
         """Creates waiting for this object to terminate as an asyncio task.
@@ -861,20 +868,39 @@ class Task(ObjectWithLogging):
         """
         return asyncio.create_task(self.join_async(timeout, interval))
 
-    def terminate(self, join=False, timeout=None, interval=0.0):
+    def stop(self, join=False, asyn=False, timeout=None, interval=0.0):
+        """Abstract method that should stop this task.
+
+        Args:
+            join (bool): Determines if terminate will wait for the object to join.
+            asyn (bool): Determines if the join will be asynchronous.
+            timeout (float): The time in seconds to wait for termination.
+            interval (float): The time in seconds between termination checks. Zero means it will check ASAP.
+
+        Returns:
+            Can return None or an async_io task object if this function is called with async on.
+        """
+        if join:
+            return self.join(asyn, timeout, interval)
+
+    def terminate(self, join=False, asyn=False, timeout=None, interval=0.0):
         """Flags the task loop and task to stop running.
 
         Args:
             join (bool): Determines if terminate will wait for the object to join.
+            asyn (bool): Determines if the join will be asynchronous.
             timeout (float): The time in seconds to wait for termination.
             interval (float): The time in seconds between termination checks. Zero means it will check ASAP.
+
+        Returns:
+            Can return None or an async_io task object if this function is called with async on.
         """
         self.trace_log("task_root", "terminate", "terminate was called", name=self.name, level="DEBUG")
         self.terminate_event.set()
         self.inputs.stop_all()
         self.outputs.stop_all()
         if join:
-            self.join(timeout, interval)
+            return self.join(asyn, timeout, interval)
 
     def reset(self):
         """Resets the stop flag to allow this task to run again."""
@@ -1262,15 +1288,16 @@ class MultiUnitTask(Task):
         """
         return asyncio.create_task(self.join_all_async(timeout, interval))
 
-    def terminate(self, join=False, timeout=None, interval=0.0):
+    def terminate(self, join=False, asyn=False, timeout=None, interval=0.0):
         """Flags the task loop and task to stop running.
 
         Args:
             join (bool): Determines if terminate will wait for the object to join.
+            asyn (bool): Determines if the join will be asynchronous.
             timeout (float): The time in seconds to wait for termination.
             interval (float): The time in seconds between termination checks. Zero means it will check ASAP.
         """
-        super().terminate(join, timeout, interval)
+        super().terminate(join, asyn, timeout, interval)
 
         # Terminate all units
         for name in self.execution_order:

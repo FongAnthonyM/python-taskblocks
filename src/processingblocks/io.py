@@ -17,9 +17,15 @@ import asyncio
 import collections
 import multiprocessing
 import multiprocessing.connection
-from multiprocessing import Process, Pool, Lock, Event, Queue, Pipe
+from multiprocessing import Process, Pool, Lock, Event, Queue, Pipe, Condition
+from multiprocessing import context
+import os
 import queue
 import warnings
+import socket
+import socketserver
+import sys
+import threading
 import time
 
 # Downloaded Libraries #
@@ -101,7 +107,132 @@ class Interrupts(collections.UserDict):
         self.master_interrupt.reset()
 
 
-class BroadcastPipe(object):
+class SimpleQueue(BaseObject):
+    # Construction/Destruction
+    def __init__(self, reader=None, writer=None, init=True):
+        self._rlock = Lock()
+        if sys.platform == 'win32':
+            self._wlock = None
+        else:
+            self._wlock = Lock()
+
+        self._writer = None
+        self._reader = None
+
+        if init:
+            self.construct(reader, writer)
+
+    # Pickling
+    def __getstate__(self):
+        context.assert_spawning(self)
+        return self._reader, self._writer, self._rlock, self._wlock
+
+    def __setstate__(self, state):
+        self._reader, self._writer, self._rlock, self._wlock = state
+        self._poll = self._reader.poll
+
+    # Constructors/Destructors
+    def construct(self, reader=None, writer=None):
+        if reader is None and writer is None:
+            self.create_pipe()
+        else:
+            self._writer = writer
+            self._reader = reader
+
+    def create_pipe(self, duplex=False):
+        self._reader, self._writer = Pipe(duplex)
+
+    def empty(self):
+        return not self._reader.poll()
+
+    def get_reader(self):
+        return self._reader
+
+    def get_writer(self):
+        return self._writer
+
+    def get(self, block=True, timeout=None):
+        if self._rlock.aqcuire(block, timeout):
+            try:
+                res = self._reader.recv_bytes()
+            finally:
+                self._rlock.release()
+        else:
+            warnings.warn()
+            return None
+
+        # unserialize the data after having released the lock
+        return context.reduction.ForkingPickler.loads(res)
+
+    async def get_async(self, timeout=None, interval=0.0):
+        start_time = time.perf_counter()
+        while True:
+            if self._rlock.aqcuire(block=False):
+                try:
+                    res = self._reader.recv_bytes()
+                finally:
+                    self._rlock.release()
+                    break
+            if timeout is not None and (time.perf_counter() - start_time) >= timeout:
+                warnings.warn()
+                return None
+            await asyncio.sleep(interval)
+
+        # unserialize the data after having released the lock
+        return context.reduction.ForkingPickler.loads(res)
+
+    def put(self, obj, block=True, timeout=None):
+        # serialize the data before acquiring the lock
+        obj = context.reduction.ForkingPickler.dumps(obj)
+        if self._wlock is None:
+            # writes to a message oriented win32 pipe are atomic
+            self._writer.send_bytes(obj)
+        else:
+            if self._wlock.acquire(block, timeout):
+                try:
+                    self._writer.send_bytes(obj)
+                finally:
+                    self._wlock.release()
+            else:
+                warnings.warn()
+
+    async def put_async(self, obj, timeout=None, interval=0.0):
+        start_time = time.perf_counter()
+        # serialize the data before acquiring the lock
+        obj = context.reduction.ForkingPickler.dumps(obj)
+        if self._wlock is None:
+            # writes to a message oriented win32 pipe are atomic
+            self._writer.send_bytes(obj)
+        else:
+            while True:
+                if self._wlock.acquire(block=False):
+                    try:
+                        self._writer.send_bytes(obj)
+                    finally:
+                        self._wlock.release()
+                        break
+                if timeout is not None and (time.perf_counter() - start_time) >= timeout:
+                    warnings.warn()
+                    return None
+                await asyncio.sleep(interval)
+
+    def close(self):
+        self._reader.close()
+        self._writer.close()
+
+
+class IOServer(BaseObject):
+    def __init__(self):
+        self.server = None
+
+    def start_server(self):
+        self.server = socket.create_server()
+
+    async def start_server_async(self):
+        self.server = await asyncio.start_server()
+
+
+class BroadcastPipe(BaseObject):
     # Construction/Destruction
     def __init__(self, name):
         self.name = name
@@ -218,7 +349,7 @@ class BroadcastPipe(object):
             connection.recv()
 
 
-class BroadcastQueue(object):
+class BroadcastQueue(BaseObject):
     # Construction/Destruction
     def __init__(self, name):
         self.name = name
@@ -757,7 +888,3 @@ class InstanceIOClient(object):
 
     # Constructors/Destructors
 
-
-# Main #
-if __name__ == "__main__":
-    pass

@@ -22,6 +22,7 @@ import typing
 
 # Downloaded Libraries #
 from advancedlogging import AdvancedLogger
+from advancedlogging.handlers import LogListener, QueueHandler
 
 # Local Libraries #
 from .task import Task
@@ -31,18 +32,17 @@ from .task import Task
 # Classes #
 # Tasks #
 @dataclasses.dataclass
-class ListenerInfoUnit:
+class ListenerUnit:
     """A Dataclass that hold information about listeners for the log listener."""
     name: str
-    queue: Queue
-    handlers: list
-    respect_handler_level: False
+    listener: LogListener
+    setup: typing.Any
+    closure: typing.Any
+    s_kwargs: {}
+    c_kwargs: {}
 
 
-# Todo: Create LogListener Class or Edit the existing one.
-
-
-class LogListener(Task):
+class LogListenerTask(Task):
     class_loggers = {"log_listener_root": AdvancedLogger("log_listener_root")}
 
     def __init__(self, q_handlers=None, name="log_listener", init=True):
@@ -90,7 +90,8 @@ class LogListener(Task):
         """
         return self.listeners.items()
 
-    def set_listener(self, name, queue, *handlers, respect_handler_level=False):
+    def set_listener(self, name, queue, *handlers, respect_handler_level=False,
+                     setup=None, closure=None, s_kwargs={}, c_kwargs={}):
         """Sets a single unit within this object.
 
         Args:
@@ -98,8 +99,13 @@ class LogListener(Task):
             queue: The queue to get the LogRecords from.
             handlers: The handlers that will process the LogRecords.
             respect_handler_level: Determines if the log level will checked again for each handler.
+            setup: The function that will setup the LogListener.
+            closure: The function that will close the LogListener.
+            s_kwargs: The keyword arguments for the LogListener setup.
+            c_kwargs: The keyword arguments for the LogListener closure.
         """
-        self.listeners[name] = ListenerInfoUnit(name, queue, handlers, respect_handler_level)
+        listener = LogListener(queue, *handlers, respect_handler_level=respect_handler_level)
+        self.listeners[name] = ListenerUnit(name, listener, setup, closure, s_kwargs, c_kwargs)
 
     def update(self, listeners):
         """Updates the contained unit dictionary with the new dictionary.
@@ -108,12 +114,12 @@ class LogListener(Task):
             listeners (:obj:`dict` of :obj:`Task`): The new dictionary to add to the listeners of this object.
         """
         for name, unit in listeners.items():
-            if isinstance(unit, ListenerInfoUnit):
+            if isinstance(unit, LogListener):
                 self.listeners[name] = unit
             elif isinstance(unit, dict):
                 if "name" not in unit:
                     unit["name"] = name
-                self.listeners[name] = ListenerInfoUnit(**unit)
+                self.listeners[name] = LogListener(**unit)
 
     def pop(self, name):
         """Removes the named unit from this object.
@@ -132,21 +138,33 @@ class LogListener(Task):
 
     # Setup
     def setup(self, **kwargs):
-        """The method to run before executing task."""
-        self.trace_log("task_root", "setup", "setup method not overridden", name=self.name, level="DEBUG")
+        """Setup the listeners."""
+        for name, unit in self.listeners.items():
+            if unit.setup is not None:
+                listener = unit.listener
+                kwargs = unit.s_kwargs
+                unit.setup(listener, **kwargs)
 
     # Task
     def task(self, **kwargs):
         """The main method to execute."""
-        self.trace_log("task_root", "task", "task method not overridden", name=self.name, level="DEBUG")
+        self.trace_log("log_listener_root", "task", "task method not overridden", name=self.name, level="DEBUG")
 
     async def task_async(self, **kwargs):
         """The main async method to execute."""
-        self.trace_log("task_root", "task_async", "task_async method not overridden running task",
+        self.trace_log("log_listener_root", "task_async", "task_async method not overridden running task",
                        name=self.name, level="DEBUG")
         self.task(**kwargs)
 
     # Closure
     def closure(self, **kwargs):
-        """The method to run after executing task."""
-        self.trace_log("task_root", "closure", "closure method not overridden", name=self.name, level="DEBUG")
+        """Close the listeners."""
+        for name, unit in self.listeners.items():
+            if unit.closure is not None:
+                listener = unit.listener
+                kwargs = unit.c_kwargs
+                unit.closure(listener, **kwargs)
+
+    def stop(self, join=False, asyn=False, timeout=None, interval=0.0):
+        # Todo: Enqueue Sentinels
+        super().stop(join, asyn, timeout, interval)
