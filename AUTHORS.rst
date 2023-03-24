@@ -1,5 +1,0 @@
-
-Authors
-=======
-
-* Anthony Michael Fong -  

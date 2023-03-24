@@ -1,18 +1,18 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """ io.py
-Description:
-"""
-__author__ = "Anthony Fong"
-__copyright__ = "Copyright 2021, Anthony Fong"
-__credits__ = ["Anthony Fong"]
-__license__ = ""
-__version__ = "1.0.0"
-__maintainer__ = "Anthony Fong"
-__email__ = ""
-__status__ = "Prototype"
 
-# Default Libraries #
+"""
+# Package Header #
+from ..header import *
+
+# Header #
+__author__ = __author__
+__credits__ = __credits__
+__maintainer__ = __maintainer__
+__email__ = __email__
+
+
+# Imports #
+# Standard Libraries #
 import asyncio
 import collections
 import multiprocessing
@@ -28,10 +28,10 @@ import sys
 import threading
 import time
 
-# Downloaded Libraries #
-from baseobjects import BaseObject
+# Third-Party Packages #
+from baseobjects import BaseObject, BaseDict
 
-# Local Libraries #
+# Local Packages #
 
 
 # Todo: Add cross instance socket reader.
@@ -39,74 +39,6 @@ from baseobjects import BaseObject
 # Todo: Decide if advancedlogging or warnings should be used.
 # Definitions #
 # Classes #
-class Interrupt(BaseObject):
-    # Construction/Destruction
-    def __init__(self, master=None):
-        self.master = master
-        self.event = Event()
-
-    def __bool__(self):
-        return self.check()
-
-    # Methods
-    def check(self):
-        if self.master:
-            self.event.set()
-        return self.event.is_set()
-
-    def set(self):
-        self.event.set()
-
-    def reset(self):
-        self.event.clear()
-
-
-class Interrupts(collections.UserDict):
-    # Construction/Destruction
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.master_interrupt = Interrupt()
-
-    # Methods
-    def add(self, name):
-        if name not in self.data:
-            self.data[name] = Interrupt(master=self.master_interrupt)
-        return self.data[name]
-
-    def set(self, name, interrupt=None):
-        if interrupt is None:
-            self.data[name] = Interrupt(self.master_interrupt)
-        else:
-            self.data[name] = interrupt
-        return self.data[name]
-
-    def remove(self, name):
-        del self.data[name]
-
-    def check(self, name):
-        return bool(self.get(name))
-
-    def interrupt(self, name):
-        self.data[name].set()
-
-    def interrupt_all(self):
-        for interrupt in self.data:
-            interrupt.set()
-
-    def interrupt_all_processes(self):
-        self.master_interrupt.set()
-
-    def reset(self, name):
-        self.data[name].reset()
-
-    def reset_all(self):
-        for interrupt in self.data:
-            interrupt.reset()
-
-    def reset_all_processes(self):
-        self.master_interrupt.reset()
-
-
 class SimpleQueue(BaseObject):
     # Construction/Destruction
     def __init__(self, reader=None, writer=None, init=True):

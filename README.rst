@@ -1,107 +1,102 @@
-========
-Overview
-========
-
-.. start-badges
-
-.. list-table::
-    :stub-columns: 1
-
-    * - docs
-      - |docs|
-    * - tests
-      - | |travis| |appveyor| |requires|
-        | |codecov|
-    * - package
-      - | |version| |wheel| |supported-versions| |supported-implementations|
-        | |commits-since|
-.. |docs| image:: https://readthedocs.org/projects/python-processingblocks/badge/?style=flat
-    :target: https://python-processingblocks.readthedocs.io/
-    :alt: Documentation Status
-
-.. |travis| image:: https://api.travis-ci.com/fonganthonym/python-processingblocks.svg?branch=master
-    :alt: Travis-CI Build Status
-    :target: https://travis-ci.com/github/fonganthonym/python-processingblocks
-
-.. |appveyor| image:: https://ci.appveyor.com/api/projects/status/github/fonganthonym/python-processingblocks?branch=master&svg=true
-    :alt: AppVeyor Build Status
-    :target: https://ci.appveyor.com/project/fonganthonym/python-processingblocks
-
-.. |requires| image:: https://requires.io/github/fonganthonym/python-processingblocks/requirements.svg?branch=master
-    :alt: Requirements Status
-    :target: https://requires.io/github/fonganthonym/python-processingblocks/requirements/?branch=master
-
-.. |codecov| image:: https://codecov.io/gh/fonganthonym/python-processingblocks/branch/master/graphs/badge.svg?branch=master
-    :alt: Coverage Status
-    :target: https://codecov.io/github/fonganthonym/python-processingblocks
-
-.. |version| image:: https://img.shields.io/pypi/v/processingblocks.svg
-    :alt: PyPI Package latest release
-    :target: https://pypi.org/project/processingblocks
-
-.. |wheel| image:: https://img.shields.io/pypi/wheel/processingblocks.svg
-    :alt: PyPI Wheel
-    :target: https://pypi.org/project/processingblocks
-
-.. |supported-versions| image:: https://img.shields.io/pypi/pyversions/processingblocks.svg
-    :alt: Supported versions
-    :target: https://pypi.org/project/processingblocks
-
-.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/processingblocks.svg
-    :alt: Supported implementations
-    :target: https://pypi.org/project/processingblocks
-
-.. |commits-since| image:: https://img.shields.io/github/commits-since/fonganthonym/python-processingblocks/v0.1.0.svg
-    :alt: Commits since latest release
-    :target: https://github.com/fonganthonym/python-processingblocks/compare/v0.1.0...master
-
-
-
-.. end-badges
-
-An SDK for creating multiprocess applications that use a block diagram paradigm.
-
-* Free software: BSD 2-Clause License
-
-Installation
+processingblocks
 ============
 
-::
+|PyPI| |Status| |Python Version| |License|
 
-    pip install processingblocks
+|Read the Docs| |Tests| |Codecov|
 
-You can also install the in-development version with::
+|pre-commit| |Black|
 
-    pip install https://github.com/fonganthonym/python-processingblocks/archive/master.zip
+.. |PyPI| image:: https://img.shields.io/pypi/v/processingblocks.svg
+   :target: https://pypi.org/project/processingblocks/
+   :alt: PyPI
+.. |Status| image:: https://img.shields.io/pypi/status/processingblocks.svg
+   :target: https://pypi.org/project/processingblocks/
+   :alt: Status
+.. |Python Version| image:: https://img.shields.io/pypi/pyversions/processingblocks
+   :target: https://pypi.org/project/processingblocks
+   :alt: Python Version
+.. |License| image:: https://img.shields.io/pypi/l/processingblocks
+   :target: https://opensource.org/licenses/MIT
+   :alt: License
+.. |Read the Docs| image:: https://img.shields.io/readthedocs/python-processingblocks/latest.svg?label=Read%20the%20Docs
+   :target: https://python-processingblocks.readthedocs.io/
+   :alt: Read the documentation at https://python-processingblocks.readthedocs.io/
+.. |Tests| image:: https://github.com/fongant/python-processingblocks/workflows/Tests/badge.svg
+   :target: https://github.com/fongant/processingblocks/actions?workflow=Tests
+   :alt: Tests
+.. |Codecov| image:: https://codecov.io/gh/fongant/python-processingblocks/branch/main/graph/badge.svg
+   :target: https://codecov.io/gh/fongant/python-processingblocks
+   :alt: Codecov
+.. |pre-commit| image:: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white
+   :target: https://github.com/pre-commit/pre-commit
+   :alt: pre-commit
+.. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://github.com/psf/black
+   :alt: Black
 
 
-Documentation
-=============
+Features
+--------
+
+* TODO
 
 
-https://python-processingblocks.readthedocs.io/
+Requirements
+------------
+
+* TODO
 
 
-Development
-===========
+Installation
+------------
 
-To run all the tests run::
+You can install *processingblocks* via pip_ from PyPI_:
 
-    tox
+.. code:: console
 
-Note, to combine the coverage data from all the tox environments run:
+   $ pip install processingblocks
 
-.. list-table::
-    :widths: 10 90
-    :stub-columns: 1
 
-    - - Windows
-      - ::
+Usage
+-----
 
-            set PYTEST_ADDOPTS=--cov-append
-            tox
+Please see the `Command-line Reference <Usage_>`_ for details.
 
-    - - Other
-      - ::
 
-            PYTEST_ADDOPTS=--cov-append tox
+Contributing
+------------
+
+Contributions are very welcome.
+To learn more, see the `Contributor Guide`_.
+
+
+License
+-------
+
+Distributed under the terms of the `MIT license`_,
+*processingblocks* is free and open source software.
+
+
+Issues
+------
+
+If you encounter any problems,
+please `file an issue`_ along with a detailed description.
+
+
+Credits
+-------
+
+This project was generated from `@cjolowicz`_'s `Hypermodern Python Cookiecutter`_ template.
+
+.. _@cjolowicz: https://github.com/cjolowicz
+.. _Cookiecutter: https://github.com/audreyr/cookiecutter
+.. _MIT license: https://opensource.org/licenses/MIT
+.. _PyPI: https://pypi.org/
+.. _Hypermodern Python Cookiecutter: https://github.com/cjolowicz/cookiecutter-hypermodern-python
+.. _file an issue: https://github.com/fongant/python-processingblocks/issues
+.. _pip: https://pip.pypa.io/
+.. github-only
+.. _Contributor Guide: CONTRIBUTING.rst
+.. _Usage: https://python-processingblocks.readthedocs.io/en/latest/usage.html

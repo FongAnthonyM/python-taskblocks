@@ -1,7 +1,6 @@
-=====
 Usage
 =====
 
-To use processingblocks in a project::
-
-	import processingblocks
+.. click:: processingblocks.__main__:main
+   :prog: python-processingblocks
+   :nested: full
