@@ -13,19 +13,19 @@ __email__ = __email__
 
 # Imports #
 # Standard Libraries #
-from multiprocessing import get_context
 from multiprocessing.synchronize import Event
 from multiprocessing.context import BaseContext
 
 # Third-Party Packages #
-from baseobjects import BaseObject, BaseDict
+from baseobjects import BaseDict
 
 # Local Packages #
+from .asyncevent import AsyncEvent
 
 
 # Definitions #
 # Classes #
-class Interrupt(Event):
+class Interrupt(AsyncEvent):
     # Magic Methods #
     # Construction/Destruction
     def __init__(self, parent: Event | None = None, *, ctx: BaseContext | None = None) -> None:
@@ -33,10 +33,7 @@ class Interrupt(Event):
         self.parent: Event | None = parent
 
         # Construction #
-        super().__init__(ctx=get_context() if ctx is None else ctx)
-
-    def __bool__(self) -> bool:
-        return self.is_set()
+        super().__init__(ctx=ctx)
 
     # Instance Methods #
     def is_set(self) -> bool:
@@ -49,6 +46,7 @@ class Interrupts(BaseDict):
     # Magic Methods #
     # Construction/Destruction
     def __init__(self, dict_: dict | None = None, /, *args, **kwargs):
+        # New Attributes #
         self.master_interrupt = Interrupt()
 
         super().__init__(dict_, *args, **kwargs)
