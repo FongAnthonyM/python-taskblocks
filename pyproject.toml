@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "taskblocks"
-version = "0.1.0"
+version = "0.1.1"
 description = "An API for creating TaskBlock objects which can switch between async and multiprocessing."
 authors = ["Anthony Fong <FongAnthonyM@gmail.com>"]
 license = "MIT"
