@@ -3,22 +3,16 @@
 """ conftest.py
 Used for pytest directory-specific hook implementations and directory inclusion for imports.
 """
-__author__ = "Anthony Fong"
-__copyright__ = "Copyright 2021, Anthony Fong"
-__credits__ = ["Anthony Fong"]
-__license__ = ""
-__version__ = "0.1.0"
-__maintainer__ = "Anthony Fong"
-__email__ = ""
-__status__ = "Beta"
+# Imports #
+# Standard Libraries #
+from typing import Dict
+from typing import Tuple
 
-# Default Libraries #
-from typing import Dict, Tuple
-
-# Downloaded Libraries #
 import pytest
 
-# Local Libraries #
+# Third-Party Packages #
+
+# Local Packages #
 
 
 # Definitions #
@@ -34,11 +28,7 @@ def pytest_runtest_makereport(item, call):
             # the test has failed retrieve the class name of the test
             cls_name = str(item.cls)
             # retrieve the index of the test (if parametrize is used in combination with incremental)
-            parametrize_index = (
-                tuple(item.callspec.indices.values())
-                if hasattr(item, "callspec")
-                else ()
-            )
+            parametrize_index = tuple(item.callspec.indices.values()) if hasattr(item, "callspec") else ()
             # retrieve the name of the test function
             test_name = item.originalname or item.name
             # store in _test_failed_incremental the original name of the failed test
@@ -53,11 +43,7 @@ def pytest_runtest_setup(item):
         # check if a previous test has failed for this class
         if cls_name in _test_failed_incremental:
             # retrieve the index of the test (if parametrize is used in combination with incremental)
-            parametrize_index = (
-                tuple(item.callspec.indices.values())
-                if hasattr(item, "callspec")
-                else ()
-            )
+            parametrize_index = tuple(item.callspec.indices.values()) if hasattr(item, "callspec") else ()
             # retrieve the name of the first test function to fail for this class name and index
             test_name = _test_failed_incremental[cls_name].get(parametrize_index, None)
             # if name found, test has failed for the combination of class name & test name

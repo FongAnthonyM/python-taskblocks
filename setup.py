@@ -1,85 +1,78 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-
-import io
-import re
+""" setup.py
+The setup for this package, only present to use in develop mode.
+"""
+# Imports #
+# Standard Libraries #
 from glob import glob
 from os.path import basename
-from os.path import dirname
-from os.path import join
 from os.path import splitext
+import pathlib
 
+# Third-Party Packages #
 from setuptools import find_packages
 from setuptools import setup
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 
-def read(*names, **kwargs):
-    with io.open(
-        join(dirname(__file__), *names),
-        encoding=kwargs.get('encoding', 'utf8')
-    ) as fh:
-        return fh.read()
+# Definitions #
+# Functions #
+def get_pyproject_as_setup():
+    file_path = pathlib.Path(__file__).parent.joinpath("pyproject.toml")
+    with file_path.open(mode="rb") as file:
+        pyproject = tomllib.load(file)
 
+    package_info = pyproject["tool"]["poetry"]
+    setup_info = package_info.copy()
+
+    dependencies = setup_info["dependencies"].copy()
+    py_ver = dependencies.pop("python")
+    setup_info["python"] = f">={py_ver.lstrip('^')}" if '^' in py_ver else py_ver
+    setup_info["requires"] = []
+    for package, version in dependencies.items():
+        if isinstance(version, dict):
+            version = version["version"]
+
+        if '^' in version:
+            setup_info["requires"].append(f"{package}>={version}")
+        elif '=' in version or '>' in version or '<' in version:
+            setup_info["requires"].append(f"{package}{version}")
+        else:
+            setup_info["requires"].append(f"{package}={version}")
+
+    dev = setup_info["dev-dependencies"]
+    setup_info["extras"] = []
+    for package, version in dev.items():
+        if isinstance(version, dict):
+            version = version["version"]
+
+        if '^' in version:
+            setup_info["extras"].append(f"{package}>={version}")
+        elif '=' in version or '>' in version or '<' in version:
+            setup_info["extras"].append(f"{package}{version}")
+        else:
+            setup_info["extras"].append(f"{package}={version}")
+
+    return setup_info
+
+
+# Main #
+setup_info = get_pyproject_as_setup()
 
 setup(
-    name='processingblocks',
-    version='0.1.0',
-    license='BSD-2-Clause',
-    description='An SDK for creating multiprocess applications that use a block diagram paradigm.',
-    long_description='%s\n%s' % (
-        re.compile('^.. start-badges.*^.. end-badges', re.M | re.S).sub('', read('README.rst')),
-        re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
-    ),
-    author='Anthony Michael Fong',
-    author_email='FongAnthonyM@gmail.com',
-    url='https://github.com/fonganthonym/python-processingblocks',
-    packages=find_packages('src'),
-    package_dir={'': 'src'},
-    py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
-    include_package_data=True,
-    zip_safe=False,
-    classifiers=[
-        # complete classifier list: http://pypi.python.org/pypi?%3Aaction=list_classifiers
-        'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD License',
-        'Operating System :: Unix',
-        'Operating System :: POSIX',
-        'Operating System :: Microsoft :: Windows',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: Implementation :: CPython',
-        'Programming Language :: Python :: Implementation :: PyPy',
-        # uncomment if you test on these interpreters:
-        # 'Programming Language :: Python :: Implementation :: IronPython',
-        # 'Programming Language :: Python :: Implementation :: Jython',
-        # 'Programming Language :: Python :: Implementation :: Stackless',
-        'Topic :: Utilities',
-    ],
-    project_urls={
-        'Documentation': 'https://python-processingblocks.readthedocs.io/',
-        'Changelog': 'https://python-processingblocks.readthedocs.io/en/latest/changelog.html',
-        'Issue Tracker': 'https://github.com/fonganthonym/python-processingblocks/issues',
-    },
-    keywords=[
-        # eg: 'keyword1', 'keyword2', 'keyword3',
-    ],
-    python_requires='>=3.6',
-    install_requires=[
-        'advancedlogging>=0.2.0',
-        'baseobjects>=1.2.0'
-    ],
+    name=setup_info["name"],
+    version=setup_info["version"],
+    license=setup_info["license"],
+    packages=find_packages("src"),
+    package_dir={"": "src"},
+    py_modules=[splitext(basename(path))[0] for path in glob("src/*.py")],
+    python_requires=setup_info["python"],
+    install_requires=setup_info["requires"],
     extras_require={
-        "dev": ['pytest>=6.2.3'],
-    },
-    entry_points={
-        'console_scripts': [
-            'processingblocks = processingblocks.cli:main',
-        ]
+        "dev": setup_info["extras"],
     },
 )

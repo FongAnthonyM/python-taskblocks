@@ -1,7 +1,6 @@
-=====
 Usage
 =====
 
-To use processingblocks in a project::
-
-	import processingblocks
+.. click:: taskblocks.__main__:main
+   :prog: python-taskblocks
+   :nested: full

@@ -1,91 +1,123 @@
-============
-Contributing
-============
+Contributor Guide
+=================
 
-Contributions are welcome, and they are greatly appreciated! Every
-little bit helps, and credit will always be given.
+Thank you for your interest in improving this project.
+This project is open-source under the `MIT license`_ and
+welcomes contributions in the form of bug reports, feature requests, and pull requests.
 
-Bug reports
-===========
+Here is a list of important resources for contributors:
 
-When `reporting a bug <https://github.com/fonganthonym/python-processingblocks/issues>`_ please include:
+- `Source Code`_
+- `Documentation`_
+- `Issue Tracker`_
+- `Code of Conduct`_
 
-    * Your operating system name and version.
-    * Any details about your local setup that might be helpful in troubleshooting.
-    * Detailed steps to reproduce the bug.
+.. _MIT license: https://opensource.org/licenses/MIT
+.. _Source Code: https://github.com/fongant/python-taskblocks
+.. _Documentation: https://python-taskblocks.readthedocs.io/
+.. _Issue Tracker: https://github.com/fongant/python-taskblocks/issues
 
-Documentation improvements
-==========================
+How to report a bug
+-------------------
 
-processingblocks could always use more documentation, whether as part of the
-official processingblocks docs, in docstrings, or even on the web in blog posts,
-articles, and such.
+Report bugs on the `Issue Tracker`_.
 
-Feature requests and feedback
-=============================
+When filing an issue, make sure to answer these questions:
 
-The best way to send feedback is to file an issue at https://github.com/fonganthonym/python-processingblocks/issues.
+- Which operating system and Python version are you using?
+- Which version of this project are you using?
+- What did you do?
+- What did you expect to see?
+- What did you see instead?
 
-If you are proposing a feature:
+The best way to get your bug fixed is to provide a test case,
+and/or steps to reproduce the issue.
 
-* Explain in detail how it would work.
-* Keep the scope as narrow as possible, to make it easier to implement.
-* Remember that this is a volunteer-driven project, and that code contributions are welcome :)
 
-Development
-===========
+How to request a feature
+------------------------
 
-To set up `python-processingblocks` for local development:
+Request features on the `Issue Tracker`_.
 
-1. Fork `python-processingblocks <https://github.com/fonganthonym/python-processingblocks>`_
-   (look for the "Fork" button).
-2. Clone your fork locally::
 
-    git clone git@github.com:YOURGITHUBNAME/python-processingblocks.git
+How to set up your development environment
+------------------------------------------
 
-3. Create a branch for local development::
+You need Python 3.7+ and the following tools:
 
-    git checkout -b name-of-your-bugfix-or-feature
+- Poetry_
+- Nox_
+- nox-poetry_
 
-   Now you can make your changes locally.
+Install the package with development requirements:
 
-4. When you're done making changes run all the checks and docs builder with `tox <https://tox.readthedocs.io/en/latest/install.html>`_ one command::
+.. code:: console
 
-    tox
+   $ poetry install
 
-5. Commit your changes and push your branch to GitHub::
+You can now run an interactive Python session,
+or the command-line interface:
 
-    git add .
-    git commit -m "Your detailed description of your changes."
-    git push origin name-of-your-bugfix-or-feature
+.. code:: console
 
-6. Submit a pull request through the GitHub website.
+   $ poetry run python
+   $ poetry run python-taskblocks
 
-Pull Request Guidelines
+.. _Poetry: https://python-poetry.org/
+.. _Nox: https://nox.thea.codes/
+.. _nox-poetry: https://nox-poetry.readthedocs.io/
+
+
+How to test the project
 -----------------------
 
-If you need some code review or feedback while you're developing the code just make the pull request.
+Run the full test suite:
 
-For merging, you should:
+.. code:: console
 
-1. Include passing tests (run ``tox``) [1]_.
-2. Update documentation when there's new API, functionality etc.
-3. Add a note to ``CHANGELOG.rst`` about the changes.
-4. Add yourself to ``AUTHORS.rst``.
+   $ nox
 
-.. [1] If you don't have all the necessary python versions available locally you can rely on Travis - it will
-       `run the tests <https://travis-ci.com/github/fonganthonym/python-processingblocks/pull_requests>`_
-       for each change you add in the pull request.
+List the available Nox sessions:
 
-       It will be slower though ...
+.. code:: console
 
-Tips
-----
+   $ nox --list-sessions
 
-To run a subset of tests::
+You can also run a specific Nox session.
+For example, invoke the unit test suite like this:
 
-    tox -e envname -- pytest -k test_myfeature
+.. code:: console
 
-To run all the test environments in *parallel*::
+   $ nox --session=tests
 
-    tox -p auto
+Unit tests are located in the ``tests`` directory,
+and are written using the pytest_ testing framework.
+
+.. _pytest: https://pytest.readthedocs.io/
+
+
+How to submit changes
+---------------------
+
+Open a `pull request`_ to submit changes to this project.
+
+Your pull request needs to meet the following guidelines for acceptance:
+
+- The Nox test suite must pass without errors and warnings.
+- Include unit tests. This project maintains 100% code coverage.
+- If your changes add functionality, update the documentation accordingly.
+
+Feel free to submit early, though—we can always iterate on this.
+
+To run linting and code formatting checks before committing your change, you can install pre-commit as a Git hook by running the following command:
+
+.. code:: console
+
+   $ nox --session=pre-commit -- install
+
+It is recommended to open an issue before starting work on anything.
+This will allow a chance to talk it over with the owners and validate your approach.
+
+.. _pull request: https://github.com/fongant/python-taskblocks/pulls
+.. github-only
+.. _Code of Conduct: CODE_OF_CONDUCT.rst
