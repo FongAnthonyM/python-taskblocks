@@ -1,26 +1,27 @@
 [tool.poetry]
-name = "processingblocks"
-version = "0.0.0"
-description = "Basic object templates."
+name = "taskblocks"
+version = "0.1.0"
+description = "An API for creating TaskBlock objects which can switch between async and multiprocessing."
 authors = ["Anthony Fong <FongAnthonyM@gmail.com>"]
 license = "MIT"
 readme = "README.rst"
-homepage = "https://github.com/fongant/python-processingblocks"
-repository = "https://github.com/fongant/python-processingblocks"
-documentation = "https://python-processingblocks.readthedocs.io"
+homepage = "https://github.com/fongant/python-taskblocks"
+repository = "https://github.com/fongant/python-taskblocks"
+documentation = "https://python-taskblocks.readthedocs.io"
 packages = [
-    { include = "processingblocks", from = "src" },
+    { include = "taskblocks", from = "src" },
 ]
 classifiers = [
     "Development Status :: 1 - Prototype",
 ]
 
 [tool.poetry.urls]
-Changelog = "https://github.com/fongant/python-processingblocks/releases"
+Changelog = "https://github.com/fongant/python-taskblocks/releases"
 
 [tool.poetry.dependencies]
 python = "^3.10"
 click = "^8.0.3"
+baseobjects = "^1.9.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.0.1"
@@ -47,14 +48,14 @@ sphinx-click = "^3.0.2"
 Pygments = "^2.10.0"
 
 [tool.poetry.scripts]
-python-processingblocks = "processingblocks.__main__:main"
+python-taskblocks = "taskblocks.__main__:main"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
 
 [tool.coverage.run]
 branch = true
-source = ["processingblocks"]
+source = ["taskblocks"]
 
 [tool.coverage.report]
 show_missing = true

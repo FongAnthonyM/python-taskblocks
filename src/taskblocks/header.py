@@ -2,7 +2,7 @@
 Information about this package.
 """
 # Header #
-__package_name__ = "processingblocks"
+__package_name__ = "taskblocks"
 
 __author__ = "Anthony Fong"
 __credits__ = ["Anthony Fong"]

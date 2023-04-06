@@ -6,8 +6,8 @@ Reference
     :backlinks: none
 
 
-processingblocks.__main__
+taskblocks.__main__
 --------------------
 
-.. automodule:: processingblocks.__main__
+.. automodule:: taskblocks.__main__
    :members:

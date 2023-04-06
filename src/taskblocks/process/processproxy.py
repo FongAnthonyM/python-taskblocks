@@ -1,5 +1,5 @@
 """ provxyprocess.py
-
+A proxy for a Process which acts like a Process, but can run more than once.
 """
 # Package Header #
 from ..header import *
@@ -13,7 +13,7 @@ __email__ = __email__
 
 # Imports #
 # Standard Libraries #
-import asyncio
+from asyncio import sleep
 from multiprocessing import Process, cpu_count
 from time import perf_counter
 from typing import Any
@@ -264,7 +264,7 @@ class ProcessProxy(BaseObject):
         """Wait until child process terminates.
 
         Args:
-            timeout: The time in seconds to wait for the process to exit.
+            timeout: The time, in seconds, to wait for the process to exit.
         """
         assert self.process is not None, 'can only join a started process'
         self.process.join(timeout)
@@ -278,8 +278,8 @@ class ProcessProxy(BaseObject):
         """Asynchronously, wait for the process to return/exit.
 
         Args:
-            timeout: The time in seconds to wait for the process to exit.
-            interval: The time in seconds between each join check.
+            timeout: The time, in seconds, to wait for the process to exit.
+            interval: The time, in seconds, between each join check.
             interrupt: A interrupt which can be used to escape the loop.
         """
         self.join_interrupt = interrupt or Interrupt()
@@ -287,7 +287,7 @@ class ProcessProxy(BaseObject):
             while self.process.exitcode is None:
                 if self.join_interrupt.is_set():
                     raise InterruptedError
-                await asyncio.sleep(interval)
+                await sleep(interval)
         else:
             deadline = perf_counter() + timeout
             while self.process.exitcode is None:
@@ -295,7 +295,7 @@ class ProcessProxy(BaseObject):
                     raise InterruptedError
                 if deadline <= perf_counter():
                     raise TimeoutError
-                await asyncio.sleep(interval)
+                await sleep(interval)
 
     def close(self) -> None:
         """Closes the process and frees the resources."""

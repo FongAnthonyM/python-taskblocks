@@ -6,7 +6,7 @@
   "friendly_name": "base objects",
   "github_user": "fongant",
   "license": "MIT",
-  "package_name": "processingblocks",
-  "project_name": "python-processingblocks",
+  "package_name": "taskblocks",
+  "project_name": "python-taskblocks",
   "version": "0.0.0"
 }

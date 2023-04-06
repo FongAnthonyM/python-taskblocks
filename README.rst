@@ -1,4 +1,4 @@
-processingblocks
+taskblocks
 ============
 
 |PyPI| |Status| |Python Version| |License|
@@ -7,26 +7,26 @@ processingblocks
 
 |pre-commit| |Black|
 
-.. |PyPI| image:: https://img.shields.io/pypi/v/processingblocks.svg
-   :target: https://pypi.org/project/processingblocks/
+.. |PyPI| image:: https://img.shields.io/pypi/v/taskblocks.svg
+   :target: https://pypi.org/project/taskblocks/
    :alt: PyPI
-.. |Status| image:: https://img.shields.io/pypi/status/processingblocks.svg
-   :target: https://pypi.org/project/processingblocks/
+.. |Status| image:: https://img.shields.io/pypi/status/taskblocks.svg
+   :target: https://pypi.org/project/taskblocks/
    :alt: Status
-.. |Python Version| image:: https://img.shields.io/pypi/pyversions/processingblocks
-   :target: https://pypi.org/project/processingblocks
+.. |Python Version| image:: https://img.shields.io/pypi/pyversions/taskblocks
+   :target: https://pypi.org/project/taskblocks
    :alt: Python Version
-.. |License| image:: https://img.shields.io/pypi/l/processingblocks
+.. |License| image:: https://img.shields.io/pypi/l/taskblocks
    :target: https://opensource.org/licenses/MIT
    :alt: License
-.. |Read the Docs| image:: https://img.shields.io/readthedocs/python-processingblocks/latest.svg?label=Read%20the%20Docs
-   :target: https://python-processingblocks.readthedocs.io/
-   :alt: Read the documentation at https://python-processingblocks.readthedocs.io/
-.. |Tests| image:: https://github.com/fongant/python-processingblocks/workflows/Tests/badge.svg
-   :target: https://github.com/fongant/processingblocks/actions?workflow=Tests
+.. |Read the Docs| image:: https://img.shields.io/readthedocs/python-taskblocks/latest.svg?label=Read%20the%20Docs
+   :target: https://python-taskblocks.readthedocs.io/
+   :alt: Read the documentation at https://python-taskblocks.readthedocs.io/
+.. |Tests| image:: https://github.com/fongant/python-taskblocks/workflows/Tests/badge.svg
+   :target: https://github.com/fongant/taskblocks/actions?workflow=Tests
    :alt: Tests
-.. |Codecov| image:: https://codecov.io/gh/fongant/python-processingblocks/branch/main/graph/badge.svg
-   :target: https://codecov.io/gh/fongant/python-processingblocks
+.. |Codecov| image:: https://codecov.io/gh/fongant/python-taskblocks/branch/main/graph/badge.svg
+   :target: https://codecov.io/gh/fongant/python-taskblocks
    :alt: Codecov
 .. |pre-commit| image:: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white
    :target: https://github.com/pre-commit/pre-commit
@@ -51,11 +51,11 @@ Requirements
 Installation
 ------------
 
-You can install *processingblocks* via pip_ from PyPI_:
+You can install *taskblocks* via pip_ from PyPI_:
 
 .. code:: console
 
-   $ pip install processingblocks
+   $ pip install taskblocks
 
 
 Usage
@@ -75,7 +75,7 @@ License
 -------
 
 Distributed under the terms of the `MIT license`_,
-*processingblocks* is free and open source software.
+*taskblocks* is free and open source software.
 
 
 Issues
@@ -95,8 +95,8 @@ This project was generated from `@cjolowicz`_'s `Hypermodern Python Cookiecutter
 .. _MIT license: https://opensource.org/licenses/MIT
 .. _PyPI: https://pypi.org/
 .. _Hypermodern Python Cookiecutter: https://github.com/cjolowicz/cookiecutter-hypermodern-python
-.. _file an issue: https://github.com/fongant/python-processingblocks/issues
+.. _file an issue: https://github.com/fongant/python-taskblocks/issues
 .. _pip: https://pip.pypa.io/
 .. github-only
 .. _Contributor Guide: CONTRIBUTING.rst
-.. _Usage: https://python-processingblocks.readthedocs.io/en/latest/usage.html
+.. _Usage: https://python-taskblocks.readthedocs.io/en/latest/usage.html

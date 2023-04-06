@@ -1,8 +1,8 @@
 """ __init__.py
-
+Process objects.
 """
 # Package Header #
-from .header import *
+from ..header import *
 
 # Header #
 __author__ = __author__
@@ -13,7 +13,4 @@ __email__ = __email__
 
 # Imports #
 # Local Packages #
-# from .io import *
-# from .processors import *
-# from .task import *
-# from .tasks import *
+from .processproxy import ProcessProxy

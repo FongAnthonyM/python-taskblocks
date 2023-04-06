@@ -1,5 +1,5 @@
 """ __init__.py
-
+Input/Output objects.
 """
 # Package Header #
 from ..header import *
