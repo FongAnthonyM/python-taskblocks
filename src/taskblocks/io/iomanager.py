@@ -74,8 +74,11 @@ class IOManager(ChainMap):
                 hold_interrupt.set()
         
         for q in self.queues.values():
+            interrupt_all = getattr(q, "interrupt_all", None)
             get_interrupt = getattr(q, "get_interrupt", None)
             put_interrupt = getattr(q, "put_interrupt", None)
+            if interrupt_all is not None:
+                interrupt_all()
             if get_interrupt is not None:
                 get_interrupt.set()
             if put_interrupt is not None:
@@ -97,8 +100,11 @@ class IOManager(ChainMap):
                 hold_interrupt.clear()
 
         for q in self.queues.values():
+            uninterrupt_all = getattr(q, "uninterrupt_all", None)
             get_interrupt = getattr(q, "get_interrupt", None)
             put_interrupt = getattr(q, "put_interrupt", None)
+            if uninterrupt_all is not None:
+                uninterrupt_all()
             if get_interrupt is not None:
                 get_interrupt.clear()
             if put_interrupt is not None:

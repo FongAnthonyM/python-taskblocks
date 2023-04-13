@@ -160,6 +160,7 @@ class TaskBlock(BaseObject):
         in_dict["process"] = ProcessProxy()
         self.__dict__ = in_dict
 
+    # Instance Methods #
     # Constructors/Destructors
     def construct(
         self,
@@ -237,11 +238,11 @@ class TaskBlock(BaseObject):
         """Abstract method that constructs the io for this object."""
         pass
 
-    def link_inputs(self, *args: Any, **kwargs: Any) -> None:
+    def link_input(self, *args: Any, **kwargs: Any) -> None:
         """Abstract method that gives a place to the inputs to other objects."""
         pass
 
-    def link_outputs(self, *args: Any, **kwargs: Any) -> None:
+    def link_output(self, *args: Any, **kwargs: Any) -> None:
         """Abstract method that gives a place to the outputs to other objects."""
         pass
 

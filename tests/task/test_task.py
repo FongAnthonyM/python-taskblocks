@@ -22,7 +22,7 @@ from typing import Any
 import pytest
 
 # Local Packages #
-from src.taskblocks import TaskBlock, AsyncEvent, SimpleAsyncQueue
+from src.taskblocks import TaskBlock, AsyncEvent, SimpleAsyncQueue, SimpleAsyncQueueManager
 
 
 # Definitions #
@@ -35,7 +35,7 @@ class TestTask:
 
             self.outputs.events["setup_check"] = AsyncEvent()
             self.outputs.events["teardown_check"] = AsyncEvent()
-            self.outputs.queues["main_output"] = SimpleAsyncQueue()
+            self.outputs.queues["main_output"] = SimpleAsyncQueueManager(names=("test_one", "test_two"))
 
         def link_inputs(self, *args: Any, **kwargs: Any) -> None:
             pass
@@ -65,24 +65,24 @@ class TestTask:
 
     def test_run(self):
         task = self.ExampleTaskBlock()
-        task.inputs.queues["main_input"].put(1)
+        task.inputs.queues["main_input"].put_single(1, )
 
         task.run()
         task.join()
 
         assert task.outputs.events["setup_check"].is_set()
-        assert task.outputs.queues["main_output"].get() == 2
+        assert task.outputs.queues["main_output"].get_single() == 2
         assert task.outputs.events["teardown_check"].is_set()
 
     def test_run_in_async_loop(self):
         task = self.ExampleTaskBlock()
-        task.inputs.queues["main_input"].put(1)
+        task.inputs.queues["main_input"].put_single(1, )
 
         asyncio.run(self.in_async_loop(task))
         task.join()
 
         assert task.outputs.events["setup_check"].is_set()
-        assert task.outputs.queues["main_output"].get() == 2
+        assert task.outputs.queues["main_output"].get_single() == 2
         assert task.outputs.events["teardown_check"].is_set()
 
     def test_start_process(self):
@@ -91,11 +91,11 @@ class TestTask:
         task.start()
         assert task.outputs.events["setup_check"].wait()
 
-        task.inputs.queues["main_input"].put(1)
-        assert task.outputs.queues["main_output"].get() == 2
+        task.inputs.queues["main_input"].put_single(1, )
+        assert task.outputs.queues["main_output"].get_single() == 2
 
-        task.inputs.queues["main_input"].put(2)
-        assert task.outputs.queues["main_output"].get() == 3
+        task.inputs.queues["main_input"].put_single(2, )
+        assert task.outputs.queues["main_output"].get_single() == 3
 
         task.stop()
         assert task.outputs.events["teardown_check"].wait()
