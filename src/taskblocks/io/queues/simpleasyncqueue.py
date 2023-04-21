@@ -2,7 +2,7 @@
 Extends the multiprocessing SimpleQueue by adding async methods and interrupts for blocking methods.
 """
 # Package Header #
-from ..header import *
+from ...header import *
 
 # Header #
 __author__ = __author__
@@ -25,12 +25,13 @@ from typing import Any
 # Third-Party Packages #
 
 # Local Packages #
-from .interrupt import Interrupt
+from ..synchronize import Interrupt
+from .asyncqueueinterface import AsyncQueueInterface
 
 
 # Definitions #
 # Classes #
-class SimpleAsyncQueue(SimpleQueue):
+class SimpleAsyncQueue(SimpleQueue, AsyncQueueInterface):
     """Extends the multiprocessing SimpleQueue by adding async methods and interrupts for blocking methods.
 
     Attributes:
@@ -50,23 +51,36 @@ class SimpleAsyncQueue(SimpleQueue):
         # Construction #
         super().__init__(ctx=get_context() if ctx is None else ctx)
 
-    def __del__(self) -> None:
-        """Closes the queue when this object is deleted."""
-        self.close()
-
     # Instance Methods #
-    def get(self, timeout: float | None = None) -> Any:
+    def get(self, block: bool = True, timeout: float | None = None) -> Any:
         """Gets an item from the queue, waits for an item if the queue is empty.
 
         Args:
+            block: Determines if this method will block execution.
             timeout: The time, in seconds, to wait for an item in the queue.
 
         Returns:
             The requested item.
+
+        Raises:
+            Empty: When there are no items to get in the queue when not blocking or on timing out.
+            InterruptedError: When this method is interrupted by the interrupt event.
         """
+        interrupted = self.get_interrupt.is_set()
         res = None
-        if timeout is None:
-            while not self.get_interrupt.is_set():
+
+        # Try to get an object without blocking.
+        if not block:
+            if self._rlock.acquire(block=False):
+                try:
+                    if self._reader.poll():
+                        res = self._reader.recv_bytes()
+                finally:
+                    self._rlock.release()
+
+        # Try to get an object without timing out.
+        elif timeout is None:
+            while not (interrupted := self.get_interrupt.is_set()):  # Walrus operator sets and evaluates.
                 if self._rlock.acquire(block=False):
                     try:
                         if self._reader.poll():
@@ -74,9 +88,11 @@ class SimpleAsyncQueue(SimpleQueue):
                             break
                     finally:
                         self._rlock.release()
+
+        # Try to get an object and timing out when specified.
         else:
             deadline = perf_counter() + timeout
-            while not self.get_interrupt.is_set():
+            while not (interrupted := self.get_interrupt.is_set()):  # Walrus operator sets and evaluates.
                 if self._rlock.acquire(block=False):
                     try:
                         if self._reader.poll():
@@ -84,28 +100,47 @@ class SimpleAsyncQueue(SimpleQueue):
                             break
                     finally:
                         self._rlock.release()
-                elif deadline is not None and deadline <= perf_counter():
-                    raise Empty
+                if deadline is not None and deadline <= perf_counter():
+                    break
 
-        if res is not None:
-            # unserialize the data after having released the lock
-            return ForkingPickler.loads(res)
-        else:
+        # Determine what to do.
+        if interrupted:
             raise InterruptedError
+        elif res is not None:
+            return ForkingPickler.loads(res)  # Unserialize the data after having released the lock
+        else:
+            raise Empty
 
-    async def get_async(self, timeout: float | None = None, interval: float = 0.0) -> Any:
+    async def get_async(self, block: bool = True, timeout: float | None = None, interval: float = 0.0) -> Any:
         """Asynchronously gets an item from the queue, waits for an item if the queue is empty.
 
         Args:
+            block: Determines if this method will block execution.
             timeout: The time, in seconds, to wait for an item in the queue.
             interval: The time, in seconds, between each queue check.
 
         Returns:
             The requested item.
+
+        Raises:
+            Empty: When there are no items to get in the queue when not blocking
+            InterruptedError: When this method is interrupted by the interrupt event.
         """
+        interrupted = self.get_interrupt.is_set()
         res = None
-        if timeout is None:
-            while not self.get_interrupt.is_set():
+
+        # Try to get an object without blocking.
+        if not block:
+            if self._rlock.acquire(block=False):
+                try:
+                    if self._reader.poll():
+                        res = self._reader.recv_bytes()
+                finally:
+                    self._rlock.release()
+
+        # Try to get an object without timing out.
+        elif timeout is None:
+            while not (interrupted := self.get_interrupt.is_set()):  # Walrus operator sets and evaluates.
                 if self._rlock.acquire(block=False):
                     try:
                         if self._reader.poll():
@@ -113,11 +148,12 @@ class SimpleAsyncQueue(SimpleQueue):
                             break
                     finally:
                         self._rlock.release()
-
                 await sleep(interval)
+
+        # Try to get an object and timing out when specified.
         else:
             deadline = perf_counter() + timeout
-            while not self.get_interrupt.is_set():
+            while not (interrupted := self.get_interrupt.is_set()):  # Walrus operator sets and evaluates.
                 if self._rlock.acquire(block=False):
                     try:
                         if self._reader.poll():
@@ -125,16 +161,17 @@ class SimpleAsyncQueue(SimpleQueue):
                             break
                     finally:
                         self._rlock.release()
-                elif deadline is not None and deadline <= perf_counter():
-                    raise Empty
-
+                if deadline is not None and deadline <= perf_counter():
+                    break
                 await sleep(interval)
 
-        if res is not None:
-            # unserialize the data after having released the lock
-            return ForkingPickler.loads(res)
-        else:
+        # Determine what to do.
+        if interrupted:
             raise InterruptedError
+        elif res is not None:
+            return ForkingPickler.loads(res)  # Unserialize the data after having released the lock
+        else:
+            raise Empty
 
     def put_bytes(self, buf: bytes, offset: int = 0, size: int | None = None) -> None:
         """Puts a bytes object into the queue, waits for access to the queue.
@@ -149,14 +186,13 @@ class SimpleAsyncQueue(SimpleQueue):
             # writes to a message oriented win32 pipe are atomic
             self._writer.send_bytes(buf, offset, size)
         else:
-            with self._wlock:
-                while not self.put_interrupt.is_set():
-                    if self._wlock.acquire(block=False):
-                        try:
-                            self._writer.send_bytes(buf, offset, size)
-                            return
-                        finally:
-                            self._wlock.release()
+            while not self.put_interrupt.is_set():
+                if self._wlock.acquire(block=False):
+                    try:
+                        self._writer.send_bytes(buf, offset, size)
+                        return
+                    finally:
+                        self._wlock.release()
 
     async def put_bytes_async(
         self,
@@ -206,7 +242,7 @@ class SimpleAsyncQueue(SimpleQueue):
         # Interruption leads to an error.
         raise InterruptedError
 
-    def put(self, obj: Any,) -> None:
+    def put(self, obj: Any) -> None:
         """Puts an object into the queue, waits for access to the queue.
 
         Args:

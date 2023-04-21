@@ -2,7 +2,7 @@
 A manager for several multiprocessing Pipes. Has methods for sending and receiving data on all pipes.
 """
 # Package Header #
-from ..header import *
+from ...header import *
 
 # Header #
 __author__ = __author__
@@ -25,7 +25,7 @@ from typing import Any
 from baseobjects import BaseObject
 
 # Local Packages #
-from .interrupt import Interrupt
+from ..synchronize import Interrupt
 
 
 # Definitions #
@@ -192,6 +192,10 @@ class SimplexPipeManager(BaseObject):
             name: The receive connection to get the bytes from.
             block: Determines if this method will block execution.
             timeout: The time, in seconds, to wait for the bytes.
+
+        Raises:
+            Empty: When there are no items to get in the queue when not blocking or on timing out.
+            InterruptedError: When this method is interrupted by an interrupt event.
         """
         connection = self.recv_connections[name]
         if not block and not connection.poll():

@@ -2,7 +2,7 @@
 A manager for several SimpleAsyncQueues. Has methods for sending and receiving data on all queues.
 """
 # Package Header #
-from ..header import *
+from ...header import *
 
 # Header #
 __author__ = __author__
@@ -21,12 +21,13 @@ from time import perf_counter
 from typing import Any
 
 # Third-Party Packages #
-from baseobjects import BaseObject
 from baseobjects.functions import MethodMultiplexer
 from baseobjects.collections import OrderableDict
 
 # Local Packages #
+from .asyncqueueinterface import AsyncQueueInterface
 from .simpleasyncqueue import SimpleAsyncQueue
+from .asyncqueue import AsyncQueue
 
 
 # Definitions #
@@ -35,7 +36,7 @@ SENTINEL = object()
 
 
 # Classes #
-class SimpleAsyncQueueManager(BaseObject):
+class AsyncQueueManager(AsyncQueueInterface):
     """A manager for several SimpleAsyncQueues. Has methods for sending and receiving data on all queues.
 
     Attributes:
@@ -59,7 +60,6 @@ class SimpleAsyncQueueManager(BaseObject):
     def __init__(
         self,
         queues: dict[str, Any] | None = None,
-        names: Iterable[str] | None = None,
         primary: str | None = None,
         *args: Any,
         init: bool = True,
@@ -68,7 +68,7 @@ class SimpleAsyncQueueManager(BaseObject):
         # New Attributes #
         self.primary_queue: str = ""
         
-        self.queues: OrderableDict[str, Any] = OrderableDict()
+        self.queues: OrderableDict[str, AsyncQueueInterface] = OrderableDict()
         self._queue_cycle: cycle | None = None
 
         self.put_bytes: MethodMultiplexer = MethodMultiplexer(instance=self, select="put_bytes_all")
@@ -85,7 +85,7 @@ class SimpleAsyncQueueManager(BaseObject):
 
         # Construction #
         if init:
-            self.construct(queues=queues, names=names, primary=primary, *args, **kwargs)
+            self.construct(queues=queues, primary=primary, *args, **kwargs)
             
     @property
     def queue_cycle(self) -> cycle:
@@ -95,11 +95,11 @@ class SimpleAsyncQueueManager(BaseObject):
         return self._queue_cycle
 
     # Container Methods
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self, key: str) -> AsyncQueueInterface:
         """Gets a queue in this object."""
         return self.queues[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    def __setitem__(self, key: str, value: AsyncQueueInterface) -> None:
         """Sets a queue in this object."""
         self.queues[key] = value
 
@@ -107,7 +107,7 @@ class SimpleAsyncQueueManager(BaseObject):
         """Deletes an item from this object."""
         del self.queues[key]
 
-    def __iter__(self) -> Iterator[Any]:
+    def __iter__(self) -> Iterator[AsyncQueueInterface]:
         """Returns an iterator for the queues."""
         return iter(self.queues.values())
 
@@ -116,7 +116,6 @@ class SimpleAsyncQueueManager(BaseObject):
     def construct(
         self, 
         queues: dict[str, Any] | None = None,
-        names: Iterable[str] | None = None,
         primary: str | None = None,
         *args: Any, 
         **kwargs: Any,
@@ -125,16 +124,12 @@ class SimpleAsyncQueueManager(BaseObject):
 
         Args:
             queues: The queues to add to this manager.
-            names: The names of queues to create.
             primary: The name of the queue to use by default in get/put methods.
             *args: Arguments for inheritance.
             **kwargs: Keyword arguments for inheritance.
         """
         if queues is not None:
             self.queues.update(queues)
-        
-        if names is not None:
-            self.create_queues(names=names)
             
         if primary is not None:
             self.primary_queue = primary
@@ -142,32 +137,6 @@ class SimpleAsyncQueueManager(BaseObject):
         super().construct(*args, **kwargs)
 
     # Queue
-    def create_queue(self, name: str, index: int | None = None) -> Any:
-        """Creates a SimpleAsyncQueue to manage.
-        
-        Args:
-            name: The name of the SimpleAsyncQueue to create.
-            index: The index to insert the queue in the order, otherwise it is appended.
-            
-        Returns:
-            The new SimpleAsyncQueue.
-        """
-        q = SimpleAsyncQueue()
-        if index is None:
-            self.queues.append(name, q)
-        else:
-            self.queues.insert(index, name, q)
-        return q
-
-    def create_queues(self, names: Iterable[str]) -> None:
-        """Creates SimpleAsyncQueues to manage.
-
-        Args:
-            names: The names of the SimpleAsyncQueues to create.
-        """
-        for name in names:
-            self.queues[name] = SimpleAsyncQueue()
-
     def get_queue(self, name: str, default: Any = SENTINEL) -> Any:
         """Gets a queue from this manager.
 
@@ -184,7 +153,7 @@ class SimpleAsyncQueueManager(BaseObject):
             return self.queues.get(name, default)
 
     def get_queue_index(self, index: int, default: Any = SENTINEL) -> Any:
-        """Gets a queue base on its index in the order.
+        """Gets a queue synchronize on its index in the order.
 
         Args:
             index: The index of the queue.
@@ -307,6 +276,9 @@ class SimpleAsyncQueueManager(BaseObject):
         
         Returns:
             The requested items.
+
+        Raises:
+            TimeoutError: When this method is unable to complete within the timeout time.
         """
         if timeout is None:
             return {n: await q.get_async(interval=interval) for n, q in self.queues.items()}
@@ -446,7 +418,8 @@ class SimpleAsyncQueueManager(BaseObject):
         Args:
             obj: The object to put into each queue.
         """
-        self.put_bytes_all(ForkingPickler.dumps(obj))
+        for q in self.queues.values():
+            q.put(obj)
 
     async def put_all_async(
         self,
@@ -461,11 +434,16 @@ class SimpleAsyncQueueManager(BaseObject):
             timeout: The time, in seconds, to wait for access to each queue.
             interval: The time, in seconds, between each access check.
         """
-        await self.put_bytes_all_async(
-            ForkingPickler.dumps(obj),
-            timeout=timeout,
-            interval=interval,
-        )
+        if timeout is None:
+            for q in self.queues.values():
+                await q.put_async(obj, interval=interval)
+        else:
+            deadline = perf_counter() + timeout
+            for q in self.queues.values():
+                if deadline <= perf_counter():
+                    raise TimeoutError
+
+                await q.put_async(obj, interval=interval)
         
     # Interrupt
     def interrupt_all_puts(self) -> None:

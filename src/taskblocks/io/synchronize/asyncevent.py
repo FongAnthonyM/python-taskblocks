@@ -2,7 +2,7 @@
 Extends the multiprocessing Event by adding async methods and interrupts for blocking methods.
 """
 # Package Header #
-from ..header import *
+from ...header import *
 
 # Header #
 __author__ = __author__
@@ -60,6 +60,9 @@ class AsyncEvent(Event):
 
         Returns:
             If this method successful waited or failed to a timeout.
+
+        Raises:
+            InterruptedError: When this method is interrupted by an interrupt event.
         """
         if timeout is None:
             while not self.hold_interrupt.is_set():
@@ -89,6 +92,9 @@ class AsyncEvent(Event):
 
         Returns:
             If this method successful waited or failed to a timeout.
+
+        Raises:
+            InterruptedError: When this method is interrupted by an interrupt event.
         """
         if timeout is None:
             while not self.wait_interrupt.is_set():
@@ -154,6 +160,9 @@ class AsyncEvent(Event):
 
         Returns:
             If this method successful waited for cleared or failed to a timeout.
+
+        Raises:
+            InterruptedError: When this method is interrupted by an interrupt event.
         """
         if timeout is None:
             while not self.hold_interrupt.is_set():
@@ -174,7 +183,7 @@ class AsyncEvent(Event):
                         self._flag.release()
 
                 if deadline <= perf_counter():
-                    raise TimeoutError
+                    return False
 
                 await sleep(interval)
 

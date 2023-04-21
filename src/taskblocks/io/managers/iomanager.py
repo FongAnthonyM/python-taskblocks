@@ -2,7 +2,7 @@
 Extends ChainMap to hold Input and Output objects with methods to manage them.
 """
 # Package Header #
-from ..header import *
+from ...header import *
 
 # Header #
 __author__ = __author__
@@ -19,7 +19,7 @@ from typing import Any
 # Third-Party Packages #
 
 # Local Packages #
-from .interrupt import Interrupts
+from ..synchronize import Interrupts
 
 
 # Definitions #

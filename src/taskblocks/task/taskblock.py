@@ -13,7 +13,7 @@ __email__ = __email__
 
 # Imports #
 # Standard Libraries #
-from asyncio import run, Task, create_task
+from asyncio import run, Future, Task, create_task
 from asyncio.events import AbstractEventLoop, _get_running_loop
 from typing import Any
 from warnings import warn
@@ -47,6 +47,7 @@ class TaskBlock(BaseObject):
 
         inputs: A handler that contains all inputs for this object.
         outputs: A handler that contains all outputs for this object.
+        futures: Futures to await for. Runs after teardown.
 
         _setup: The method to call when this object executes setup.
         _task: The method to call when this object executes the task.
@@ -94,6 +95,7 @@ class TaskBlock(BaseObject):
 
         self.inputs: IOManager = IOManager()
         self.outputs: IOManager = IOManager()
+        self.futures: list[Future] = []
 
         self.process: ProcessProxy | None = ProcessProxy()
         self._daemon: bool | None = None
@@ -334,6 +336,10 @@ class TaskBlock(BaseObject):
         if self.tears_down:
             await self.teardown_async(**(d_kwargs or {}))
 
+        # Wait for any remaining Futures
+        for future in self.futures:
+            await future
+
         # Flag Off
         self._alive_event.clear()
 
@@ -452,6 +458,10 @@ class TaskBlock(BaseObject):
         # Optionally Teardown
         if self.tears_down:
             await self.teardown_async(**(d_kwargs or {}))
+
+        # Wait for any remaining Futures
+        for future in self.futures:
+            await future
 
         # Flag Off
         self._alive_event.clear()
