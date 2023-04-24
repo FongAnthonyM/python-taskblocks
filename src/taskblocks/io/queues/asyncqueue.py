@@ -130,7 +130,7 @@ class AsyncQueue(Queue, AsyncQueueInterface):
             The requested item.
 
         Raises:
-            Empty: When there are no items to get in the queue when not blocking
+            Empty: When there are no items to get in the queue when not blocking or on timing out.
             InterruptedError: When this method is interrupted by the interrupt event.
         """
         if self._closed:

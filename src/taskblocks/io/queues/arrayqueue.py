@@ -1,5 +1,23 @@
 """ arrayqueue.py
+A queue for sending numpy ndarrays and other objects to other processes.
 
+This queue extends an AsyncQueue with handling ndarrays. A ndarray can take a large amount of memory and default
+queues create a pickle copy of the array to enqueue, which is slow and takes up diskspace. To be faster and prevent
+large disk read-writes, this queue instead passes names of SharedMemory containing the arrays to other processes.
+
+When a ndarrays is passed directly to into the "put" methods, a copy of the array is created in SharedMemory and,
+with its "get" handling instructions, it is serialized into an ArrayQueueItem, which will be put into the queue.
+
+An ArrayQueueItem consist of the SharedMemory of the array (SharedArray), a boolean for if it will be copied into a
+normal ndarray when "get" from the queue, a boolean for if the SharedArray will be deleted from memory when "get"
+from the queue, and a boolean for if the ArrayQueueItem will be returned instead.
+
+Instead of passing a ndarray, other objects can be passed to control how the array is handled in the "get" method.
+When a SharedArray is passed the SharedArray is returned from the "get" method without copying or deleting.
+Alternatively, an ArrayQueueItem can be passed directly for user defined control over the "get" handling. Lastly, a
+tuple of objects can be passed to the "put" methods which will serialized all objects recursively and that the tuple
+of serialized objects will be put into the queue. Also, any objects of other types can be passed into the "put"
+methods or serialization as well, but they will put into the queue normally with any special handling.
 """
 # Package Header #
 from ...header import *
@@ -13,8 +31,7 @@ __email__ = __email__
 
 # Imports #
 # Standard Libraries #
-from asyncio import sleep, queues
-from collections.abc import Iterable
+from asyncio import sleep
 from multiprocessing import Value
 from multiprocessing.context import BaseContext
 from queue import Full
@@ -34,20 +51,52 @@ from .asyncqueue import AsyncQueue
 # Definitions #
 # Classes #
 class ArrayQueueItem(NamedTuple):
+    """An object which holds a SharedArray and its queue "get" deserialization information.
+
+    Args:
+        array: The SharedArray.
+        copy: Determines if the SharedArray will be copied to a normal ndarray upon deserialization.
+        delete: Determines if the SharedArray will be deleted after deserialization.
+        as_item: Determines if this object will be returned rather than deserialized.
+    """
     array: SharedArray
     copy: bool
-    delete: bool = True
+    delete: bool
+    as_item: bool = True
 
 
 class ArrayQueue(AsyncQueue):
-    """
+    """A queue for sending numpy ndarrays and other objects to other processes.
 
-    Class Attributes:
+    This queue extends an AsyncQueue with handling ndarrays. A ndarray can take a large amount of memory and default
+    queues create a pickle copy of the array to enqueue, which is slow and takes up diskspace. To be faster and prevent
+    large disk read-writes, this queue instead passes names of SharedMemory containing the arrays to other processes.
+
+    When a ndarrays is passed directly to into the "put" methods, a copy of the array is created in SharedMemory and,
+    with its "get" handling instructions, it is serialized into an ArrayQueueItem, which will be put into the queue.
+
+    An ArrayQueueItem consist of the SharedMemory of the array (SharedArray), a boolean for if it will be copied into a
+    normal ndarray when "get" from the queue, a boolean for if the SharedArray will be deleted from memory when "get"
+    from the queue, and a boolean for if the ArrayQueueItem will be returned instead.
+
+    Instead of passing a ndarray, other objects can be passed to control how the array is handled in the "get" method.
+    When a SharedArray is passed the SharedArray is returned from the "get" method without copying or deleting.
+    Alternatively, an ArrayQueueItem can be passed directly for user defined control over the "get" handling. Lastly, a
+    tuple of objects can be passed to the "put" methods which will serialized all objects recursively and that the tuple
+    of serialized objects will be put into the queue. Also, any objects of other types can be passed into the "put"
+    methods or serialization as well, but they will put into the queue normally with any special handling.
 
     Attributes:
+        add_interrupt: Interrupts blocking add to n_bytes methods.
+        _maxbytes: The max number of bytes that can be in the queue.
+        _n_bytes: The number of bytes in this queue.
+        bytes_wait: Determines if this queue will wait for the byte-space to enqueue an item.
 
     Args:
-
+        maxsize: The maximum number items that can be in the queue.
+        maxbytes: The maximum number bytes that can be in the queue.
+        bytes_wait: Determines if this queue will wait for the byte-space to enqueue an item.
+        ctx: The context for the Python multiprocessing.
     """
     # Magic Methods #
     # Construction/Destruction
@@ -74,6 +123,7 @@ class ArrayQueue(AsyncQueue):
 
     @property
     def maxbytes(self) -> int:
+        """The max number of bytes that can be in the queue."""
         with self._maxbytes:
             return self._maxbytes.value
 
@@ -84,18 +134,43 @@ class ArrayQueue(AsyncQueue):
 
     @property
     def n_bytes(self) -> int:
+        """n_bytes: The number of bytes in this queue."""
         with self._n_bytes:
             return self._n_bytes.value
 
     # Instance Methods #
-    def _n_bytes_add(self, i: int):
+    def space_check(self, size: int) -> bool:
+        """Checks if there is enough bytes-space in the queue to add a given size.
+
+        Args:
+            size: The number bytes to see if it will fit into the queue.
+
+        Returns:
+            If there is enough
+        """
+        return size + self.n_bytes <= self.maxbytes
+
+    def _n_bytes_add(self, i: int) -> None:
+        """Safely adds numbers to the n_bytes.
+
+        Args:
+            i: The number of bytes to add to this queue.
+        """
         with self._n_bytes:
             self._n_bytes.value += i
 
-    def space_check(self, size) -> bool:
-        return size + self.n_bytes <= self.maxbytes
-
     def _add_bytes(self, size: int, block: bool = True, timeout: float | None = None) -> None:
+        """Adds bytes to the queue total if there is enough bytes-space.
+
+        Args:
+            size: The number of bytes to add to this queue.
+            block: Determines if this method will block execution to wait for enough bytes-space to add bytes.
+            timeout: The time, in seconds, to wait for enough bytes-space to add.
+
+        Raises:
+            Full: When there is not enough bytes-space to add to the queue when not blocking or on timing out.
+            InterruptedError: When this method is interrupted by the interrupt event.
+        """
         # Try to add bytes without blocking.
         if not block:
             if self._n_bytes.acquire(block=False):
@@ -142,6 +217,17 @@ class ArrayQueue(AsyncQueue):
         timeout: float | None = None,  
         interval: float = 0.0,
     ) -> None:
+        """Asynchronously adds bytes to the queue total if there is enough bytes-space.
+
+        Args:
+            size: The number of bytes to add to this queue.
+            block: Determines if this method will block execution to wait for enough bytes-space to add bytes.
+            timeout: The time, in seconds, to wait for enough bytes-space to add.
+
+        Raises:
+            Full: When there is not enough bytes-space to add to the queue when not blocking or on timing out.
+            InterruptedError: When this method is interrupted by the interrupt event.
+        """
         # Try to add bytes without blocking.
         if not block:
             if self._n_bytes.acquire(block=False):
@@ -186,38 +272,94 @@ class ArrayQueue(AsyncQueue):
     # Serialization
     @singlekwargdispatch(kwarg="obj")
     def serialize(self, obj: Any) -> Any:
+        """Serialize an object, so it can be put into the queue.
+
+        Args:
+            obj: The object to serialize.
+
+        Returns:
+            An object to add to the queue.
+        """
         return obj
 
     @serialize.register(np.ndarray)
     def _serialize(self, obj: np.ndarray) -> ArrayQueueItem:
+        """Serialize a ndarray, so it can be put into the queue.
+
+        Args:
+            obj: The object to serialize.
+
+        Returns:
+            An object to add to the queue.
+        """
         a = SharedArray(a=obj)
         self._add_bytes(a._shared_memory.size, block=self.bytes_wait)
         a.close()
-        return ArrayQueueItem(a, copy=True)
+        return ArrayQueueItem(a, copy=True, delete=True, as_item=False)
 
     @serialize.register(SharedArray)
     def _serialize(self, obj: SharedArray) -> ArrayQueueItem:
+        """Serialize a SharedArray, so it can be put into the queue.
+
+        Args:
+            obj: The object to serialize.
+
+        Returns:
+            An object to add to the queue.
+        """
         self._add_bytes(obj._shared_memory.size, block=self.bytes_wait)
         obj.close()
-        return ArrayQueueItem(obj, copy=False)
+        return ArrayQueueItem(obj, copy=False, delete=False, as_item=False)
 
     @serialize.register(ArrayQueueItem)
     def _serialize(self, obj: ArrayQueueItem) -> ArrayQueueItem:
+        """Serialize a ArrayQueueItem, so it can be put into the queue.
+
+        Args:
+            obj: The object to serialize.
+
+        Returns:
+            An object to add to the queue.
+        """
         self._add_bytes(obj.array._shared_memory.size, block=self.bytes_wait)
         obj.array.close()
         return obj
 
     @serialize.register(tuple)
-    def _serialize(self, obj: ArrayQueueItem) -> tuple:
+    def _serialize(self, obj: tuple) -> tuple:
+        """Serialize a tuple by serializing all its items, so it can be put into the queue.
+
+        Args:
+            obj: The object to serialize.
+
+        Returns:
+            An object to add to the queue.
+        """
         return tuple(self.serialize(item) for item in obj)
 
     # Serialization Async
     @singlekwargdispatch(kwarg="obj")
     async def serialize_async(self, obj: Any) -> Any:
+        """Asynchronously serialize an object, so it can be put into the queue.
+
+        Args:
+            obj: The object to serialize.
+
+        Returns:
+            An object to add to the queue.
+        """
         return obj
 
     @serialize_async.register(np.ndarray)
     async def _serialize_async(self, obj: np.ndarray) -> ArrayQueueItem:
+        """Asynchronously serialize a ndarray, so it can be put into the queue.
+
+        Args:
+            obj: The object to serialize.
+
+        Returns:
+            An object to add to the queue.
+        """
         a = SharedArray(a=obj)
         await self._add_bytes_async(a._shared_memory.size, block=self.bytes_wait)
         a.close()
@@ -225,31 +367,73 @@ class ArrayQueue(AsyncQueue):
 
     @serialize_async.register(SharedArray)
     async def _serialize_async(self, obj: SharedArray) -> ArrayQueueItem:
+        """Asynchronously serialize a SharedArray, so it can be put into the queue.
+
+        Args:
+            obj: The object to serialize.
+
+        Returns:
+            An object to add to the queue.
+        """
         await self._add_bytes_async(obj._shared_memory.size, block=self.bytes_wait)
         obj.close()
         return ArrayQueueItem(obj, copy=False)
 
     @serialize_async.register(ArrayQueueItem)
     async def _serialize_async(self, obj: ArrayQueueItem) -> ArrayQueueItem:
+        """Asynchronously serialize an ArrayQueueItem, so it can be put into the queue.
+
+        Args:
+            obj: The object to serialize.
+
+        Returns:
+            An object to add to the queue.
+        """
         await self._add_bytes_async(obj.array._shared_memory.size, block=self.bytes_wait)
         obj.array.close()
         return obj
 
     @serialize_async.register(tuple)
-    async def _serialize_async(self, obj: ArrayQueueItem) -> tuple:
+    async def _serialize_async(self, obj: tuple) -> tuple:
+        """Asynchronously serialize a tuple by serializing all its items, so it can be put into the queue.
+
+        Args:
+            obj: The object to serialize.
+
+        Returns:
+            An object to add to the queue.
+        """
         return tuple(await self.serialize_async(item) for item in obj)
 
     # Deserialization
     @singlekwargdispatch("obj")
     def deserialize(self, obj: Any) -> Any:
+        """Deserialize an object from the queue.
+
+        Args:
+            obj: The object to deserialize.
+
+        Returns:
+            An object from the queue.
+        """
         return obj
 
     @deserialize.register(ArrayQueueItem)
-    def _deserialize(self, obj: ArrayQueueItem) -> SharedArray | np.ndarray:
+    def _deserialize(self, obj: ArrayQueueItem) -> ArrayQueueItem | SharedArray | np.ndarray:
+        """Deserialize an ArrayQueueItem from the queue.
+
+        Args:
+            obj: The object to deserialize.
+
+        Returns:
+            An object from the queue.
+        """
         shared_array = obj.array
         size = shared_array._shared_memory.size
 
-        if obj.copy:
+        if obj.as_item:
+            a = obj
+        elif obj.copy:
             a = shared_array.copy_array()
             if obj.delete:
                 shared_array.close()
@@ -262,6 +446,14 @@ class ArrayQueue(AsyncQueue):
 
     @deserialize.register(tuple)
     def _deserialize(self, obj: ArrayQueueItem) -> tuple:
+        """Deserialize a tuple of objects from the queue.
+
+        Args:
+            obj: The objects to deserialize.
+
+        Returns:
+            A tuple of objects from queue.
+        """
         return tuple(self.deserialize(item) for item in obj)
 
     # Queue
@@ -299,7 +491,11 @@ class ArrayQueue(AsyncQueue):
         return self.deserialize(await super().get_async(block=block, timeout=timeout, interval=interval))
 
     def put(self, obj: Any) -> None:
-        """Puts an item from on the queue."""
+        """Puts an item from on the queue.
+
+        Args:
+            The object to put into the queue.
+        """
         super().put(self.serialize(obj))
 
     async def put_async(self, obj: Any, timeout: float | None = None, interval: float = 0.0) -> None:

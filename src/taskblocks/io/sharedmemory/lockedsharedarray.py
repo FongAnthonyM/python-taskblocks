@@ -15,7 +15,6 @@ __email__ = __email__
 # Standard Libraries #
 from collections.abc import Iterable
 from contextlib import contextmanager
-from multiprocessing.shared_memory import SharedMemory
 from typing import Any
 
 # Third-Party Packages #
