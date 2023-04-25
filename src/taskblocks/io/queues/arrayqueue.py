@@ -292,8 +292,8 @@ class ArrayQueue(AsyncQueue):
         Returns:
             An object to add to the queue.
         """
+        self._add_bytes(obj.nbytes, block=self.bytes_wait)
         a = SharedArray(a=obj)
-        self._add_bytes(a._shared_memory.size, block=self.bytes_wait)
         a.close()
         return ArrayQueueItem(a, copy=True, delete=True, as_item=False)
 
@@ -360,8 +360,8 @@ class ArrayQueue(AsyncQueue):
         Returns:
             An object to add to the queue.
         """
+        await self._add_bytes_async(obj.nbytes, block=self.bytes_wait)
         a = SharedArray(a=obj)
-        await self._add_bytes_async(a._shared_memory.size, block=self.bytes_wait)
         a.close()
         return ArrayQueueItem(a, copy=True, delete=True, as_item=False)
 
