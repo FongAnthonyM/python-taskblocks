@@ -40,7 +40,7 @@ class TaskUnit(NamedTuple):
     post_teardown: bool
 
 
-class TaskBlockGroup(TaskBlock, BaseDict):
+class TaskBlockGroup(BaseDict, TaskBlock):
     """A TaskBlock that contains other Tasks and executes them.
 
     TaskBlock Group contains TaskUnits rather Tasks because each task has some external execution information required to
@@ -91,7 +91,7 @@ class TaskBlockGroup(TaskBlock, BaseDict):
         self._execution_order: tuple[str, ...] = ()
 
         # Parent Attributes #
-        super().__init__(*args, init=False, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Construct #
         if init:
@@ -247,7 +247,7 @@ class TaskBlockGroup(TaskBlock, BaseDict):
                 self.data[name] = unit
             elif isinstance(unit, dict):
                 self.data[name] = self.create_unit(**unit)
-            else:
+            elif isinstance(unit, TaskBlock):
                 self.data[name] = self.create_unit(unit)
 
     # Setup
