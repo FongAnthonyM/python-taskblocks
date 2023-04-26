@@ -194,4 +194,4 @@ class AsyncQueue(Queue, AsyncQueueInterface):
             timeout: The time, in seconds, to wait for access to the queue.
             interval: The time, in seconds, between each access check.
         """
-        self.put(obj=obj)
+        super().put(obj=obj)

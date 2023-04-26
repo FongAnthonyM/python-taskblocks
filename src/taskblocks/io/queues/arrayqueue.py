@@ -31,7 +31,7 @@ __email__ = __email__
 
 # Imports #
 # Standard Libraries #
-from asyncio import sleep
+from asyncio import sleep, gather
 from multiprocessing import Value
 from multiprocessing.context import BaseContext
 from queue import Full
@@ -292,8 +292,8 @@ class ArrayQueue(AsyncQueue):
         Returns:
             An object to add to the queue.
         """
+        self._add_bytes(obj.nbytes, block=self.bytes_wait)
         a = SharedArray(a=obj)
-        self._add_bytes(a._shared_memory.size, block=self.bytes_wait)
         a.close()
         return ArrayQueueItem(a, copy=True, delete=True, as_item=False)
 
@@ -360,10 +360,10 @@ class ArrayQueue(AsyncQueue):
         Returns:
             An object to add to the queue.
         """
+        await self._add_bytes_async(obj.nbytes, block=self.bytes_wait)
         a = SharedArray(a=obj)
-        await self._add_bytes_async(a._shared_memory.size, block=self.bytes_wait)
         a.close()
-        return ArrayQueueItem(a, copy=True)
+        return ArrayQueueItem(a, copy=True, delete=True, as_item=False)
 
     @serialize_async.register(SharedArray)
     async def _serialize_async(self, obj: SharedArray) -> ArrayQueueItem:
@@ -377,7 +377,7 @@ class ArrayQueue(AsyncQueue):
         """
         await self._add_bytes_async(obj._shared_memory.size, block=self.bytes_wait)
         obj.close()
-        return ArrayQueueItem(obj, copy=False)
+        return ArrayQueueItem(obj, copy=False, delete=False, as_item=False)
 
     @serialize_async.register(ArrayQueueItem)
     async def _serialize_async(self, obj: ArrayQueueItem) -> ArrayQueueItem:
@@ -403,7 +403,7 @@ class ArrayQueue(AsyncQueue):
         Returns:
             An object to add to the queue.
         """
-        return tuple(await self.serialize_async(item) for item in obj)
+        return tuple(await gather(*(self.serialize_async(item) for item in obj)))
 
     # Deserialization
     @singlekwargdispatch("obj")

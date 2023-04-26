@@ -42,12 +42,8 @@ class TestArrayQueue:
             self.outputs.events["setup_check"].set()
 
         async def task(self, *args: Any, **kwargs: Any) -> None:
-            try:
-                in_item = await self.inputs.queues["main_input"].get_async()
-            except InterruptedError:
-                return
 
-            out_item = np.ones((100, 100))
+            out_item = (np.ones((100, 100)),)
             await self.outputs.queues["main_output"].put_async(out_item)
 
         def teardown(self, *args: Any, **kwargs: Any) -> None:
@@ -63,7 +59,6 @@ class TestArrayQueue:
 
     def test_run(self):
         task = self.ExampleTaskBlock()
-        task.inputs.queues["main_input"].put_single(1, )
 
         task.run()
         task.join()
