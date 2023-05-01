@@ -40,7 +40,7 @@ class SimplexPipeManager(BaseObject):
         recv_connections: The receive connections within this manager.
 
     Args:
-        names: The names of pipes to create.
+        names: The shared_memories of pipes to create.
         duplex: Determines if the created pipes will be duplexes.
         *args: Arguments for inheritance.
         init: Determines if this object should be initialized.
@@ -75,7 +75,7 @@ class SimplexPipeManager(BaseObject):
         """Constructs this object.
 
         Args:
-            names: The names of pipes to create.
+            names: The shared_memories of pipes to create.
             duplex: Determines if the created pipes will be duplexes.
             *args: Arguments for inheritance.
             **kwargs: Keyword arguments for inheritance.
@@ -103,7 +103,7 @@ class SimplexPipeManager(BaseObject):
         """Creates Pipes to manage.
 
         Args:
-            names: The names of the pipes to create.
+            names: The shared_memories of the pipes to create.
             duplex: Determines if the pipes will be duplexes.
         """
         for name in names:
@@ -113,7 +113,7 @@ class SimplexPipeManager(BaseObject):
         """Sets a connection pair to manage.
 
         Args:
-            name: The names of the connection to manage.
+            name: The shared_memories of the connection to manage.
             recv: The receive connection to manage.
             send: The send connection to manage.
         """
@@ -124,7 +124,7 @@ class SimplexPipeManager(BaseObject):
         """Gets a connection pair.
 
         Args:
-            name: The names of the connection to manage.
+            name: The shared_memories of the connection to manage.
             
         Returns
             The requested receive and send connections.

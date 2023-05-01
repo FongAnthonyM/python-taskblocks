@@ -45,6 +45,7 @@ class SharedArray(StaticWrapper):
         offset: The offset of array data in the buffer.
         strides: The strides of data in memory
         order: Row-major (C-style) or column-major (Fortran-style) order.
+        register: Determines if the SharedMemory will be registered to help deallocate it when the process dies.
         init: Determines if this object should be initialized.
     """
     _wrapped_types: list[type | object] = [np.ndarray]
@@ -63,6 +64,7 @@ class SharedArray(StaticWrapper):
         offset: int = 0,
         strides: Iterable[int, ...] | None = None,
         order: str | None = None,
+        register: bool = True,
         init: bool = True,
     ) -> None:
         # New Attributes #
@@ -82,7 +84,8 @@ class SharedArray(StaticWrapper):
                 dtype=dtype,
                 offset=offset,
                 strides=strides,
-                order=order
+                order=order,
+                register=register,
             )
 
     @property
@@ -120,7 +123,7 @@ class SharedArray(StaticWrapper):
         kwargs = state.pop("kwargs")
         self.__dict__.update(state)
 
-        self.construct_new_array(**kwargs)
+        self.construct_exsisting_array(**kwargs)
 
     # Array
     def __array_function__(self, func, types, args, kwargs) -> Any:
@@ -151,6 +154,7 @@ class SharedArray(StaticWrapper):
         offset: int | None = None,
         strides: Iterable[int, ...] | None = None,
         order: str | None = None,
+        register: bool = True,
     ) -> None:
         """Constructs this object.
 
@@ -162,25 +166,27 @@ class SharedArray(StaticWrapper):
             offset: The offset of array data in the buffer.
             strides: The strides of data in memory
             order: Row-major (C-style) or column-major (Fortran-style) order.
+            register: Determines if the SharedMemory will be registered to help deallocate it when the process dies.
         """
         if a is not None:
-            self.construct_existing_array(a=a, name=name)
+            self.construct_from_array(a=a, name=name, register=register)
         elif shape is not None:
-            self.construct_new_array(shape=shape, name=name, strides=strides, order=order)
+            self.construct_new_array(shape=shape, name=name, strides=strides, order=order, register=register)
         elif name is not None:
             raise ValueError("Either an array or the shape must be provided.")
 
-    def construct_existing_array(self, a: np.ndarray, name: str | None = None) -> None:
+    def construct_from_array(self, a: np.ndarray, name: str | None = None, register: bool = True) -> None:
         """Constructs this object from a given array. Replaces the values if the SharedMemory already exists.
 
         Args:
             a: The array to set the values this array to.
             name: The name of this SharedMemory.
+            register: Determines if the SharedMemory will be registered to help deallocate it when the process dies.
         """
         try:
-            self._shared_memory = self.shared_memory_type(name=name)
+            self._shared_memory = self.shared_memory_type(name=name, register=register)
         except (FileNotFoundError, ValueError):
-            self._shared_memory = self.shared_memory_type(name=name, create=True, size=a.nbytes)
+            self._shared_memory = self.shared_memory_type(name=name, create=True, size=int(a.nbytes), register=register)
         self._array = np.ndarray(a.shape, dtype=a.dtype, buffer=self._shared_memory.buf)
         self[:] = a[:]
 
@@ -192,6 +198,7 @@ class SharedArray(StaticWrapper):
         offset: int = 0,
         strides: Iterable[int, ...] | None = None,
         order: str | None = None,
+        register: bool = True,
     ) -> None:
         """Constructs this object from given parameters.
 
@@ -202,15 +209,49 @@ class SharedArray(StaticWrapper):
             offset: The offset of array data in the buffer.
             strides: The strides of data in memory
             order: Row-major (C-style) or column-major (Fortran-style) order.
+            register: Determines if the SharedMemory will be registered to help deallocate it when the process dies.
         """
         try:
-            self._shared_memory = self.shared_memory_type(name=name)
+            self._shared_memory = self.shared_memory_type(name=name, register=register)
         except (FileNotFoundError, ValueError):
             self._shared_memory = self.shared_memory_type(
                 name=name,
                 create=True,
-                size=np.dtype(dtype).itemsize * np.prod(shape),
+                size=int(np.dtype(dtype).itemsize * np.prod(shape)),
+                register=register
             )
+
+        self._array = np.ndarray(
+            shape,
+            dtype=dtype,
+            buffer=self._shared_memory.buf,
+            offset=offset,
+            strides=strides,
+            order=order,
+        )
+
+    def construct_exsisting_array(
+        self,
+        shape: Iterable[int, ...],
+        name: str | None = None,
+        dtype: str | np.dtype | None = None,
+        offset: int = 0,
+        strides: Iterable[int, ...] | None = None,
+        order: str | None = None,
+        register: bool = True,
+    ) -> None:
+        """Constructs this object from given parameters.
+
+        Args:
+            shape: The shape to set the array to.
+            name: The shared memory name.
+            dtype: The data type of the array.
+            offset: The offset of array data in the buffer.
+            strides: The strides of data in memory
+            order: Row-major (C-style) or column-major (Fortran-style) order.
+            register: Determines if the SharedMemory will be registered to help deallocate it when the process dies.
+        """
+        self._shared_memory = self.shared_memory_type(name=name, register=register)
 
         self._array = np.ndarray(
             shape,

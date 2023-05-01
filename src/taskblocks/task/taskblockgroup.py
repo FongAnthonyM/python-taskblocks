@@ -267,7 +267,7 @@ class TaskBlockGroup(BaseDict, TaskBlock):
         # Execute all tasks
         for name in self.execution_order:
             unit = self.data[name]
-            awaitable = getattr(unit.task, unit.excute_method)()
+            awaitable = getattr(unit.task, unit.execute_method)()
             if awaitable is not None:
                 async_tasks.append(awaitable)
 

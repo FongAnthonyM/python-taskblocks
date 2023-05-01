@@ -3,7 +3,7 @@ A queue for sending numpy ndarrays and other objects to other processes.
 
 This queue extends an AsyncQueue with handling ndarrays. A ndarray can take a large amount of memory and default
 queues create a pickle copy of the array to enqueue, which is slow and takes up diskspace. To be faster and prevent
-large disk read-writes, this queue instead passes names of SharedMemory containing the arrays to other processes.
+large disk read-writes, this queue instead passes SharedMemory containing the arrays to other processes.
 
 When a ndarrays is passed directly to into the "put" methods, a copy of the array is created in SharedMemory and,
 with its "get" handling instructions, it is serialized into an ArrayQueueItem, which will be put into the queue.
@@ -44,7 +44,7 @@ import numpy as np
 
 # Local Packages #
 from ..synchronize import Interrupt
-from ..sharedmemory import SharedArray
+from ..sharedmemory import SharedArray, SharedMemoryRegister
 from .asyncqueue import AsyncQueue
 
 
@@ -70,7 +70,7 @@ class ArrayQueue(AsyncQueue):
 
     This queue extends an AsyncQueue with handling ndarrays. A ndarray can take a large amount of memory and default
     queues create a pickle copy of the array to enqueue, which is slow and takes up diskspace. To be faster and prevent
-    large disk read-writes, this queue instead passes names of SharedMemory containing the arrays to other processes.
+    large disk read-writes, this queue instead passes shared_memories of SharedMemory containing the arrays to other processes.
 
     When a ndarrays is passed directly to into the "put" methods, a copy of the array is created in SharedMemory and,
     with its "get" handling instructions, it is serialized into an ArrayQueueItem, which will be put into the queue.
@@ -91,6 +91,7 @@ class ArrayQueue(AsyncQueue):
         _maxbytes: The max number of bytes that can be in the queue.
         _n_bytes: The number of bytes in this queue.
         bytes_wait: Determines if this queue will wait for the byte-space to enqueue an item.
+        _shared_registry: The register for SharedMemories being sent on the queue to keep them alive while on the queue.
 
     Args:
         maxsize: The maximum number items that can be in the queue.
@@ -114,6 +115,8 @@ class ArrayQueue(AsyncQueue):
         self._n_bytes: Value = Value("q")
 
         self.bytes_wait: bool = bytes_wait
+
+        self._shared_registry: SharedMemoryRegister = SharedMemoryRegister()
 
         # Construction #
         super().__init__(maxsize=maxsize, ctx=ctx)
@@ -269,6 +272,12 @@ class ArrayQueue(AsyncQueue):
 
         raise InterruptedError
 
+    def update_registry(self) -> None:
+        """Updates the registry by ensuring the number of registered arrays is less than the number of queue items."""
+        n_item = self.qsize()
+        while n_item < len(self._shared_registry.shared_memories):
+            self._shared_registry.shared_memories.popitem()
+
     # Serialization
     @singlekwargdispatch(kwarg="obj")
     def serialize(self, obj: Any) -> Any:
@@ -293,8 +302,8 @@ class ArrayQueue(AsyncQueue):
             An object to add to the queue.
         """
         self._add_bytes(obj.nbytes, block=self.bytes_wait)
-        a = SharedArray(a=obj)
-        a.close()
+        a = SharedArray(a=obj, register=False)
+        self._shared_registry.register_shared_memory(a)
         return ArrayQueueItem(a, copy=True, delete=True, as_item=False)
 
     @serialize.register(SharedArray)
@@ -308,7 +317,7 @@ class ArrayQueue(AsyncQueue):
             An object to add to the queue.
         """
         self._add_bytes(obj._shared_memory.size, block=self.bytes_wait)
-        obj.close()
+        self._shared_registry.register_shared_memory(obj)
         return ArrayQueueItem(obj, copy=False, delete=False, as_item=False)
 
     @serialize.register(ArrayQueueItem)
@@ -322,7 +331,7 @@ class ArrayQueue(AsyncQueue):
             An object to add to the queue.
         """
         self._add_bytes(obj.array._shared_memory.size, block=self.bytes_wait)
-        obj.array.close()
+        self._shared_registry.register_shared_memory(obj.array)
         return obj
 
     @serialize.register(tuple)
@@ -362,7 +371,7 @@ class ArrayQueue(AsyncQueue):
         """
         await self._add_bytes_async(obj.nbytes, block=self.bytes_wait)
         a = SharedArray(a=obj)
-        a.close()
+        self._shared_registry.register_shared_memory(a)
         return ArrayQueueItem(a, copy=True, delete=True, as_item=False)
 
     @serialize_async.register(SharedArray)
@@ -376,7 +385,7 @@ class ArrayQueue(AsyncQueue):
             An object to add to the queue.
         """
         await self._add_bytes_async(obj._shared_memory.size, block=self.bytes_wait)
-        obj.close()
+        self._shared_registry.register_shared_memory(obj)
         return ArrayQueueItem(obj, copy=False, delete=False, as_item=False)
 
     @serialize_async.register(ArrayQueueItem)
@@ -390,7 +399,7 @@ class ArrayQueue(AsyncQueue):
             An object to add to the queue.
         """
         await self._add_bytes_async(obj.array._shared_memory.size, block=self.bytes_wait)
-        obj.array.close()
+        self._shared_registry.register_shared_memory(obj.array)
         return obj
 
     @serialize_async.register(tuple)
@@ -497,6 +506,7 @@ class ArrayQueue(AsyncQueue):
             The object to put into the queue.
         """
         super().put(self.serialize(obj))
+        self.update_registry()
 
     async def put_async(self, obj: Any, timeout: float | None = None, interval: float = 0.0) -> None:
         """Asynchronously puts an object into the queue, waits for access to the queue.
@@ -507,3 +517,4 @@ class ArrayQueue(AsyncQueue):
             interval: The time, in seconds, between each access check.
         """
         await super().put_async(await self.serialize_async(obj), timeout=timeout, interval=interval)
+        self.update_registry()

@@ -49,7 +49,7 @@ class AsyncQueueManager(AsyncQueueInterface):
 
     Args:
         queues: The queues to add to this manager.
-        names: The names of queues to create.
+        names: The shared_memories of queues to create.
         primary: The name of the queue to use by default in get/put methods.
         *args: Arguments for inheritance.
         init: Determines if this object should be initialized.
