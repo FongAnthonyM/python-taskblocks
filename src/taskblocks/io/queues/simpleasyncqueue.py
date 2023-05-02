@@ -214,7 +214,7 @@ class SimpleAsyncQueue(SimpleQueue, AsyncQueueInterface):
         # serialize the data before acquiring the lock
         if self._wlock is None:
             # writes to a message oriented win32 pipe are atomic
-            self._writer.send_bytes(buf, offset, size)
+            return self._writer.send_bytes(buf, offset, size)
         elif timeout is None:
             while not self.put_interrupt.is_set():
                 if self._wlock.acquire(block=False):

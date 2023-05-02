@@ -284,7 +284,7 @@ class TaskBlock(BaseObject):
             while self.loop_event.is_set():
                 try:
                     await create_task(self._task(*args, **kwargs))
-                except InterruptedError:
+                except InterruptedError as e:
                     warn("TaskBlock interrupted, if intentional, handle in the task.")
         else:
             while self.loop_event.is_set():

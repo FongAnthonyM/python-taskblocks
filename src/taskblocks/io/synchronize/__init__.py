@@ -14,5 +14,6 @@ __email__ = __email__
 # Imports #
 # Local Packages #
 from .asyncevent import AsyncEvent
+from .asynceventmanager import AsyncEventManager
 from .interrupts import *
 from .asynclock import AsyncLock

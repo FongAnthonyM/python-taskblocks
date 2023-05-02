@@ -438,7 +438,7 @@ class ArrayQueue(AsyncQueue):
             An object from the queue.
         """
         shared_array = obj.array
-        size = shared_array._shared_memory.size
+        size = shared_array.nbytes
 
         if obj.as_item:
             a = obj
