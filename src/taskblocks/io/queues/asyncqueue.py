@@ -18,7 +18,7 @@ from multiprocessing import get_context
 from multiprocessing.queues import Queue
 from multiprocessing.context import BaseContext
 from multiprocessing.reduction import ForkingPickler
-from queue import Empty
+from queue import Empty, Full
 from time import perf_counter
 from typing import Any
 
@@ -36,17 +36,21 @@ class AsyncQueue(Queue, AsyncQueueInterface):
 
     Attributes:
         get_interrupt: An event which can be set to interrupt the get method blocking.
+        put_interrupt: An event which can be set to interrupt the ptt method blocking.
 
     Args:
         maxsize: The maximum number items that can be in the queue.
+        space_wait: Determines if this queue will wait for the queue space to enqueue an item.
         ctx: The context for the Python multiprocessing.
     """
     # Magic Methods #
     # Construction/Destruction
-    def __init__(self, maxsize: int = 0, *, ctx: BaseContext | None = None) -> None:
+    def __init__(self, maxsize: int = 0, space_wait: bool = False, *, ctx: BaseContext | None = None) -> None:
         # New Attributes #
         self.get_interrupt: Interrupt = Interrupt()
-        # self.put_interrupt: Interrupt = Interrupt()
+        self.put_interrupt: Interrupt = Interrupt()
+
+        self.space_wait: bool = space_wait
 
         # Construction #
         super().__init__(maxsize=maxsize, ctx=get_context() if ctx is None else ctx)
@@ -186,12 +190,91 @@ class AsyncQueue(Queue, AsyncQueueInterface):
         else:
             raise Empty
 
+    def put(self, obj: Any, block: bool = True, timeout: float | None = None) -> None:
+        """Puts an object into the queue, waits for access to the queue.
+
+        Args:
+            obj: The object to put into the queue.
+            block: Determines if this method will block execution.
+            timeout: The time, in seconds, to wait for space in the queue.
+
+        Raises:
+            Full: When there is no more space to put an item in the queue when not blocking or on timing out.
+            InterruptedError: When this method is interrupted by the interrupt event.
+        """
+        if self._closed:
+            raise ValueError(f"Queue {self!r} is closed")
+
+        # Try to put an object without blocking.
+        if not block:
+            super().put(obj=obj, block=block, timeout=timeout)
+            return
+
+        # Try to put an object without timing out.
+        elif timeout is None:
+            while not self.put_interrupt.is_set():
+                if self._sem.acquire(block=False):
+                    with self._notempty:
+                        if self._thread is None:
+                            self._start_thread()
+                        self._buffer.append(obj)
+                        self._notempty.notify()
+                        return
+
+        # Try to put an object and timing out when specified.
+        else:
+            deadline = perf_counter() + timeout
+            while not self.put_interrupt.is_set():
+                if self._sem.acquire(block=False):
+                    with self._notempty:
+                        if self._thread is None:
+                            self._start_thread()
+                        self._buffer.append(obj)
+                        self._notempty.notify()
+                        return
+                if deadline is not None and deadline <= perf_counter():
+                    raise Full
+
+        # Interruption leads to an error.
+        raise InterruptedError
+
     async def put_async(self, obj: Any, timeout: float | None = None, interval: float = 0.0) -> None:
         """Asynchronously puts an object into the queue, waits for access to the queue.
 
         Args:
             obj: The object to put into the queue.
-            timeout: The time, in seconds, to wait for access to the queue.
+            timeout: The time, in seconds, to wait for space in the queue.
             interval: The time, in seconds, between each access check.
+
+        Raises:
+            Full: When there is no more space to put an item in the queue when not blocking or on timing out.
+            InterruptedError: When this method is interrupted by the interrupt event.
         """
-        super().put(obj=obj)
+        if timeout is None:
+            while not self.put_interrupt.is_set():
+                if self._sem.acquire(block=False):
+                    with self._notempty:
+                        if self._thread is None:
+                            self._start_thread()
+                        self._buffer.append(obj)
+                        self._notempty.notify()
+                        return
+
+                await sleep(interval)
+        else:
+            deadline = perf_counter() + timeout
+            while not self.put_interrupt.is_set():
+                if self._sem.acquire(block=False):
+                    with self._notempty:
+                        if self._thread is None:
+                            self._start_thread()
+                        self._buffer.append(obj)
+                        self._notempty.notify()
+                        return
+                if deadline is not None and deadline <= perf_counter():
+                    raise Full
+
+                await sleep(interval)
+
+        # Interruption leads to an error.
+        raise InterruptedError

@@ -19,8 +19,7 @@ from typing import Any
 from warnings import warn
 
 # Third-Party Packages #
-from baseobjects import BaseObject
-from baseobjects.functions import CallableMultiplexer
+from baseobjects.functions import MethodMultiplexObject, MethodMultiplexer
 
 # Local Packages #
 from ..io import IOManager, AsyncEvent
@@ -29,7 +28,7 @@ from ..process import ProcessProxy
 
 # Definitions #
 # Classes #
-class TaskBlock(BaseObject):
+class TaskBlock(MethodMultiplexObject):
     """An abstract processing class whose methods can be overwritten to define its functionality.
 
     Attributes:
@@ -100,9 +99,9 @@ class TaskBlock(BaseObject):
         self.process: ProcessProxy | None = ProcessProxy()
         self._daemon: bool | None = None
 
-        self._setup: CallableMultiplexer = CallableMultiplexer(instance=self, select="setup")
-        self._task: CallableMultiplexer = CallableMultiplexer(instance=self, select="task")
-        self._teardown: CallableMultiplexer = CallableMultiplexer(instance=self, select="teardown")
+        self._setup: MethodMultiplexer = MethodMultiplexer(instance=self, select="setup")
+        self._task: MethodMultiplexer = MethodMultiplexer(instance=self, select="task")
+        self._teardown: MethodMultiplexer = MethodMultiplexer(instance=self, select="teardown")
 
         # Parent Attributes #
         super().__init__(*args, init=False, **kwargs)

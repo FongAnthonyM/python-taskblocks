@@ -142,7 +142,7 @@ class ArrayQueue(AsyncQueue):
             return self._n_bytes.value
 
     # Instance Methods #
-    def space_check(self, size: int) -> bool:
+    def bytes_space_check(self, size: int) -> bool:
         """Checks if there is enough bytes-space in the queue to add a given size.
 
         Args:

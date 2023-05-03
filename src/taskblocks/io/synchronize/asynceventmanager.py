@@ -20,8 +20,7 @@ from time import perf_counter
 from typing import Any
 
 # Third-Party Packages #
-from baseobjects import BaseObject
-from baseobjects.functions import MethodMultiplexer
+from baseobjects.functions import MethodMultiplexObject, MethodMultiplexer
 from baseobjects.collections import OrderableDict
 
 # Local Packages #
@@ -33,7 +32,7 @@ SENTINEL = object()
 
 
 # Classes #
-class AsyncEventManager(BaseObject):
+class AsyncEventManager(MethodMultiplexObject):
     """A manager for several AsyncEvents. Has methods for checking all events.
 
     Attributes:
