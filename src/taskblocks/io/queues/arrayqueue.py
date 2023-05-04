@@ -280,11 +280,12 @@ class ArrayQueue(AsyncQueue):
 
     # Serialization
     @singlekwargdispatch(kwarg="obj")
-    def serialize(self, obj: Any) -> Any:
+    def serialize(self, obj: Any, block: bool = True) -> Any:
         """Serialize an object, so it can be put into the queue.
 
         Args:
             obj: The object to serialize.
+            block: Determines if this method will block while waiting for bytes space in the the queue.
 
         Returns:
             An object to add to the queue.
@@ -292,67 +293,72 @@ class ArrayQueue(AsyncQueue):
         return obj
 
     @serialize.register(np.ndarray)
-    def _serialize(self, obj: np.ndarray) -> ArrayQueueItem:
+    def _serialize(self, obj: np.ndarray, block: bool = True) -> ArrayQueueItem:
         """Serialize a ndarray, so it can be put into the queue.
 
         Args:
             obj: The object to serialize.
+            block: Determines if this method will block while waiting for bytes space in the the queue.
 
         Returns:
             An object to add to the queue.
         """
-        self._add_bytes(obj.nbytes, block=self.bytes_wait)
+        self._add_bytes(obj.nbytes, block=(block or self.bytes_wait))
         a = SharedArray(a=obj, register=False)
         self._shared_registry.register_shared_memory(a)
         return ArrayQueueItem(a, copy=True, delete=True, as_item=False)
 
     @serialize.register(SharedArray)
-    def _serialize(self, obj: SharedArray) -> ArrayQueueItem:
+    def _serialize(self, obj: SharedArray, block: bool = True) -> ArrayQueueItem:
         """Serialize a SharedArray, so it can be put into the queue.
 
         Args:
             obj: The object to serialize.
+            block: Determines if this method will block while waiting for bytes space in the the queue.
 
         Returns:
             An object to add to the queue.
         """
-        self._add_bytes(obj._shared_memory.size, block=self.bytes_wait)
+        self._add_bytes(obj._shared_memory.size, block=(block or self.bytes_wait))
         self._shared_registry.register_shared_memory(obj)
         return ArrayQueueItem(obj, copy=False, delete=False, as_item=False)
 
     @serialize.register(ArrayQueueItem)
-    def _serialize(self, obj: ArrayQueueItem) -> ArrayQueueItem:
+    def _serialize(self, obj: ArrayQueueItem, block: bool = True) -> ArrayQueueItem:
         """Serialize a ArrayQueueItem, so it can be put into the queue.
 
         Args:
             obj: The object to serialize.
+            block: Determines if this method will block while waiting for bytes space in the the queue.
 
         Returns:
             An object to add to the queue.
         """
-        self._add_bytes(obj.array._shared_memory.size, block=self.bytes_wait)
+        self._add_bytes(obj.array._shared_memory.size, block=(block or self.bytes_wait))
         self._shared_registry.register_shared_memory(obj.array)
         return obj
 
     @serialize.register(tuple)
-    def _serialize(self, obj: tuple) -> tuple:
+    def _serialize(self, obj: tuple, block: bool = True) -> tuple:
         """Serialize a tuple by serializing all its items, so it can be put into the queue.
 
         Args:
             obj: The object to serialize.
+            block: Determines if this method will block while waiting for bytes space in the the queue.
 
         Returns:
             An object to add to the queue.
         """
-        return tuple(self.serialize(item) for item in obj)
+        return tuple(self.serialize(item, block=block) for item in obj)
 
     # Serialization Async
     @singlekwargdispatch(kwarg="obj")
-    async def serialize_async(self, obj: Any) -> Any:
+    async def serialize_async(self, obj: Any, block: bool = True) -> Any:
         """Asynchronously serialize an object, so it can be put into the queue.
 
         Args:
             obj: The object to serialize.
+            block: Determines if this method will block while waiting for bytes space in the the queue.
 
         Returns:
             An object to add to the queue.
@@ -360,59 +366,63 @@ class ArrayQueue(AsyncQueue):
         return obj
 
     @serialize_async.register(np.ndarray)
-    async def _serialize_async(self, obj: np.ndarray) -> ArrayQueueItem:
+    async def _serialize_async(self, obj: np.ndarray, block: bool = True) -> ArrayQueueItem:
         """Asynchronously serialize a ndarray, so it can be put into the queue.
 
         Args:
             obj: The object to serialize.
+            block: Determines if this method will block while waiting for bytes space in the the queue.
 
         Returns:
             An object to add to the queue.
         """
-        await self._add_bytes_async(obj.nbytes, block=self.bytes_wait)
+        await self._add_bytes_async(obj.nbytes, block=(block or self.bytes_wait))
         a = SharedArray(a=obj)
         self._shared_registry.register_shared_memory(a)
         return ArrayQueueItem(a, copy=True, delete=True, as_item=False)
 
     @serialize_async.register(SharedArray)
-    async def _serialize_async(self, obj: SharedArray) -> ArrayQueueItem:
+    async def _serialize_async(self, obj: SharedArray, block: bool = True) -> ArrayQueueItem:
         """Asynchronously serialize a SharedArray, so it can be put into the queue.
 
         Args:
             obj: The object to serialize.
+            block: Determines if this method will block while waiting for bytes space in the the queue.
 
         Returns:
             An object to add to the queue.
         """
-        await self._add_bytes_async(obj._shared_memory.size, block=self.bytes_wait)
+        await self._add_bytes_async(obj._shared_memory.size, block=(block or self.bytes_wait))
         self._shared_registry.register_shared_memory(obj)
         return ArrayQueueItem(obj, copy=False, delete=False, as_item=False)
 
     @serialize_async.register(ArrayQueueItem)
-    async def _serialize_async(self, obj: ArrayQueueItem) -> ArrayQueueItem:
+    async def _serialize_async(self, obj: ArrayQueueItem, block: bool = True) -> ArrayQueueItem:
         """Asynchronously serialize an ArrayQueueItem, so it can be put into the queue.
 
         Args:
             obj: The object to serialize.
+            block: Determines if this method will block while waiting for bytes space in the the queue.
 
         Returns:
             An object to add to the queue.
         """
-        await self._add_bytes_async(obj.array._shared_memory.size, block=self.bytes_wait)
+        await self._add_bytes_async(obj.array._shared_memory.size, block=(block or self.bytes_wait))
         self._shared_registry.register_shared_memory(obj.array)
         return obj
 
     @serialize_async.register(tuple)
-    async def _serialize_async(self, obj: tuple) -> tuple:
+    async def _serialize_async(self, obj: tuple, block: bool = True) -> tuple:
         """Asynchronously serialize a tuple by serializing all its items, so it can be put into the queue.
 
         Args:
             obj: The object to serialize.
+            block: Determines if this method will block while waiting for bytes space in the the queue.
 
         Returns:
             An object to add to the queue.
         """
-        return tuple(await gather(*(self.serialize_async(item) for item in obj)))
+        return tuple(await gather(*(self.serialize_async(item, block=block) for item in obj)))
 
     # Deserialization
     @singlekwargdispatch("obj")
@@ -499,13 +509,15 @@ class ArrayQueue(AsyncQueue):
         """
         return self.deserialize(await super().get_async(block=block, timeout=timeout, interval=interval))
 
-    def put(self, obj: Any) -> None:
+    def put(self, obj: Any, block: bool = True, timeout: float | None = None) -> None:
         """Puts an item from on the queue.
 
         Args:
-            The object to put into the queue.
+            obj: The object to put into the queue.
+            block: Determines if this method will block execution.
+            timeout: The time, in seconds, to wait for space in the queue.
         """
-        super().put(self.serialize(obj))
+        super().put(self.serialize(obj), block=block, timeout=timeout)
         self.update_registry()
 
     async def put_async(self, obj: Any, timeout: float | None = None, interval: float = 0.0) -> None:

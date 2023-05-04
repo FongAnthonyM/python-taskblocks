@@ -279,7 +279,7 @@ class TaskBlockGroup(BaseDict, TaskBlock):
         # Execute the teardown of the tasks if they have post-teardown
         for name in self.execution_order:
             unit = self.data[name]
-            if unit.pre_teardown:
+            if unit.post_teardown:
                 await unit.task.teardown_async()
 
     # Run TaskBlock Once
