@@ -464,7 +464,7 @@ class ArrayQueue(AsyncQueue):
         return a
 
     @deserialize.register(tuple)
-    def _deserialize(self, obj: ArrayQueueItem) -> tuple:
+    def _deserialize(self, obj: tuple) -> tuple:
         """Deserialize a tuple of objects from the queue.
 
         Args:
