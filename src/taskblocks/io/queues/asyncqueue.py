@@ -34,6 +34,9 @@ from .asyncqueueinterface import AsyncQueueInterface
 class AsyncQueue(Queue, AsyncQueueInterface):
     """Extends the multiprocessing Queue by adding async methods and interrupts for blocking methods.
 
+    Class Attributes:
+        _ignore_attributes: The attributes to not pickle when pickling.
+
     Attributes:
         get_interrupt: An event which can be set to interrupt the get method blocking.
         put_interrupt: An event which can be set to interrupt the ptt method blocking.
@@ -43,6 +46,8 @@ class AsyncQueue(Queue, AsyncQueueInterface):
         space_wait: Determines if this queue will wait for the queue space to enqueue an item.
         ctx: The context for the Python multiprocessing.
     """
+    _ignore_attributes: set[str] = set(Queue(ctx=get_context()).__dict__.keys())
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(self, maxsize: int = 0, space_wait: bool = False, *, ctx: BaseContext | None = None) -> None:
@@ -54,6 +59,27 @@ class AsyncQueue(Queue, AsyncQueueInterface):
 
         # Construction #
         super().__init__(maxsize=maxsize, ctx=get_context() if ctx is None else ctx)
+
+    # Pickling
+    def __getstate__(self) -> Any:
+        """Creates a dictionary of attributes which can be used to rebuild this object
+
+        Returns:
+            A dictionary of this object's attributes.
+        """
+        state = self.__dict__.copy()
+        for name in self._ignore_attributes:
+            del state[name]
+        return (Queue.__getstate__(self), state)
+
+    def __setstate__(self, state: Any) -> None:
+        """Builds this object based on a dictionary of corresponding attributes.
+
+        Args:
+            state: The attributes to build this object from.
+        """
+        Queue.__setstate__(self, state[0])
+        self.__dict__.update(state[1])
 
     # Instance Methods #
     # Queue

@@ -92,6 +92,7 @@ class ArrayQueue(AsyncQueue):
         _n_bytes: The number of bytes in this queue.
         bytes_wait: Determines if this queue will wait for the byte-space to enqueue an item.
         _shared_registry: The register for SharedMemories being sent on the queue to keep them alive while on the queue.
+        _unprocessed: The number of items that have not processed from the queue. This prevents premeture deletion.
 
     Args:
         maxsize: The maximum number items that can be in the queue.
@@ -117,12 +118,16 @@ class ArrayQueue(AsyncQueue):
         self.bytes_wait: bool = bytes_wait
 
         self._shared_registry: SharedMemoryRegister = SharedMemoryRegister()
+        self._unprocessed: Value = Value("q")
 
         # Construction #
         super().__init__(maxsize=maxsize, ctx=ctx)
         self.maxbytes = maxbytes
         with self._n_bytes:
             self._n_bytes.value = 0
+            
+        with self._unprocessed:
+            self._unprocessed.value = 0
 
     @property
     def maxbytes(self) -> int:
@@ -274,9 +279,12 @@ class ArrayQueue(AsyncQueue):
 
     def update_registry(self) -> None:
         """Updates the registry by ensuring the number of registered arrays is less than the number of queue items."""
-        n_item = self.qsize()
-        while n_item < len(self._shared_registry.shared_memories):
-            self._shared_registry.shared_memories.popitem()
+        memories = self._shared_registry.shared_memories
+        with self._unprocessed:
+            unprocessed = self._unprocessed.value
+
+        for n in list(memories)[0: len(memories) - unprocessed]:
+            memories.pop(n)
 
     # Serialization
     @singlekwargdispatch(kwarg="obj")
@@ -306,6 +314,8 @@ class ArrayQueue(AsyncQueue):
         self._add_bytes(obj.nbytes, block=(block or self.bytes_wait))
         a = SharedArray(a=obj, register=False)
         self._shared_registry.register_shared_memory(a)
+        with self._unprocessed:
+            self._unprocessed.value += 1
         return ArrayQueueItem(a, copy=True, delete=True, as_item=False)
 
     @serialize.register(SharedArray)
@@ -321,6 +331,8 @@ class ArrayQueue(AsyncQueue):
         """
         self._add_bytes(obj._shared_memory.size, block=(block or self.bytes_wait))
         self._shared_registry.register_shared_memory(obj)
+        with self._unprocessed:
+            self._unprocessed.value += 1
         return ArrayQueueItem(obj, copy=False, delete=False, as_item=False)
 
     @serialize.register(ArrayQueueItem)
@@ -336,6 +348,8 @@ class ArrayQueue(AsyncQueue):
         """
         self._add_bytes(obj.array._shared_memory.size, block=(block or self.bytes_wait))
         self._shared_registry.register_shared_memory(obj.array)
+        with self._unprocessed:
+            self._unprocessed.value += 1
         return obj
 
     @serialize.register(tuple)
@@ -377,8 +391,10 @@ class ArrayQueue(AsyncQueue):
             An object to add to the queue.
         """
         await self._add_bytes_async(obj.nbytes, block=(block or self.bytes_wait))
-        a = SharedArray(a=obj)
+        a = SharedArray(a=obj, register=False)
         self._shared_registry.register_shared_memory(a)
+        with self._unprocessed:
+            self._unprocessed.value += 1
         return ArrayQueueItem(a, copy=True, delete=True, as_item=False)
 
     @serialize_async.register(SharedArray)
@@ -394,6 +410,8 @@ class ArrayQueue(AsyncQueue):
         """
         await self._add_bytes_async(obj._shared_memory.size, block=(block or self.bytes_wait))
         self._shared_registry.register_shared_memory(obj)
+        with self._unprocessed:
+            self._unprocessed.value += 1
         return ArrayQueueItem(obj, copy=False, delete=False, as_item=False)
 
     @serialize_async.register(ArrayQueueItem)
@@ -409,6 +427,8 @@ class ArrayQueue(AsyncQueue):
         """
         await self._add_bytes_async(obj.array._shared_memory.size, block=(block or self.bytes_wait))
         self._shared_registry.register_shared_memory(obj.array)
+        with self._unprocessed:
+            self._unprocessed.value += 1
         return obj
 
     @serialize_async.register(tuple)
@@ -461,6 +481,8 @@ class ArrayQueue(AsyncQueue):
             a = shared_array
 
         self._n_bytes_add(-size)
+        with self._unprocessed:
+            self._unprocessed.value -= 1
         return a
 
     @deserialize.register(tuple)

@@ -148,18 +148,18 @@ class TaskBlock(MethodMultiplexObject):
         Returns:
             dict: A dictionary of this object's attributes.
         """
-        out_dict = self.__dict__.copy()
+        out_dict = super().__getstate__()
         del out_dict["process"]
         return out_dict
 
-    def __setstate__(self, in_dict: dict[str, Any]) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         """Builds this object based on a dictionary of corresponding attributes.
 
         Args:
-            in_dict: The attributes to build this object from.
+            state: The attributes to build this object from.
         """
-        in_dict["process"] = ProcessProxy()
-        self.__dict__ = in_dict
+        state["process"] = ProcessProxy()
+        super().__setstate__(state)
 
     # Instance Methods #
     # Constructors/Destructors
