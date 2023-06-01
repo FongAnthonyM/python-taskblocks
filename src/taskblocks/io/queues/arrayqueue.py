@@ -92,7 +92,7 @@ class ArrayQueue(AsyncQueue):
         _n_bytes: The number of bytes in this queue.
         bytes_wait: Determines if this queue will wait for the byte-space to enqueue an item.
         _shared_registry: The register for SharedMemories being sent on the queue to keep them alive while on the queue.
-        _unprocessed: The number of items that have not processed from the queue. This prevents premeture deletion.
+        _unprocessed: The number of items that have not processed from the queue. This prevents premature deletion.
 
     Args:
         maxsize: The maximum number items that can be in the queue.
@@ -554,7 +554,7 @@ class ArrayQueue(AsyncQueue):
         await super().put_async(await self.serialize_async(obj), timeout=timeout, interval=interval)
         self.update_registry()
 
-    def join_registry(self) -> None:
+    def join(self) -> None:
         """Blocks until all items in the Queue have been gotten and the registry is updated."""
         previous = self.qsize()
         while current := self.qsize() > 0:
@@ -563,7 +563,7 @@ class ArrayQueue(AsyncQueue):
             previous = current
         self.update_registry()
 
-    async def join_registry_async(self, interval: float = 0.0) -> None:
+    async def join_async(self, interval: float = 0.0) -> None:
         """Asynchronously, blocks until all items in the Queue have been gotten and the registry is updated.
 
         Args:

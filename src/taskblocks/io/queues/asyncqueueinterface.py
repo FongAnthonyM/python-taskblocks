@@ -53,3 +53,15 @@ class AsyncQueueInterface(BaseObject):
     async def put_async(self, timeout: float | None = None, interval: float = 0.0, *args: Any, **kwargs: Any) -> None:
         """Asynchronously puts an item from on the queue."""
         raise NotImplemented
+
+    def join(self) -> None:
+        """Blocks until all items in the Queue have been gotten."""
+        pass
+
+    async def join_registry_async(self, interval: float = 0.0) -> None:
+        """Asynchronously, blocks until all items in the Queue have been gotten.
+
+        Args:
+            interval: The time, in seconds, between each queue check.
+        """
+        pass

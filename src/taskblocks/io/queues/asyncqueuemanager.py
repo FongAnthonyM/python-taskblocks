@@ -13,10 +13,9 @@ __email__ = __email__
 
 # Imports #
 # Standard Libraries #
-from asyncio import Task, create_task
+from asyncio import Task, create_task, gather
 from collections.abc import Iterable, Iterator
 from itertools import cycle
-from multiprocessing.reduction import ForkingPickler
 from time import perf_counter
 from typing import Any
 
@@ -26,8 +25,6 @@ from baseobjects.collections import OrderableDict
 
 # Local Packages #
 from .asyncqueueinterface import AsyncQueueInterface
-from .simpleasyncqueue import SimpleAsyncQueue
-from .asyncqueue import AsyncQueue
 
 
 # Definitions #
@@ -46,6 +43,8 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         get_async: The set_async method which can be set to another method within this object.
         put: The put method which can be set to another method within this object.
         put_async: The put_async method which can be set to another method within this object.
+        join: The join method which can be set to another method within this object.
+        join_async: The join_async method which can be set to another method within this object.
 
     Args:
         queues: The queues to add to this manager.
@@ -79,6 +78,9 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         
         self.put: MethodMultiplexer = MethodMultiplexer(instance=self, select="put_all")
         self.put_async: MethodMultiplexer = MethodMultiplexer(instance=self, select="put_all_async")
+
+        self.join: MethodMultiplexer = MethodMultiplexer(instance=self, select="join_all")
+        self.join_async: MethodMultiplexer = MethodMultiplexer(instance=self, select="join_all_async")
 
         # Parent Attributes #
         super().__init__(*args, init=False, **kwargs)
@@ -444,7 +446,38 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
                     raise TimeoutError
 
                 await q.put_async(obj, interval=interval)
-        
+
+    # Join
+    def join_single(self, name: str | None = None) -> None:
+        """Blocks until all items in the queues have been gotten.
+
+        Args:
+            name: The queue to put an item into.
+        """
+        self.queues[name or self.primary_queue].join()
+
+    async def join_single_async(self, name: str | None = None, interval: float = 0.0) -> None:
+        """Asynchronously blocks until all items in the queues have been gotten.
+
+        Args:
+            name: The queue to put an item into.
+            interval: The time, in seconds, between each queue check.
+        """
+        await self.queues[name or self.primary_queue].join_async(interval=interval)
+
+    def join_all(self) -> None:
+        """Blocks until all items in the queues have been gotten."""
+        for q in self.queues.values():
+            q.join()
+
+    async def join_all_async(self, interval: float = 0.0) -> None:
+        """Asynchronously, blocks until all items in the Queue have been gotten and the registry is updated.
+
+        Args:
+            interval: The time, in seconds, between each queue check.
+        """
+        await gather(q.join_async(interval=interval) for q in self.queues.values())
+
     # Interrupt
     def interrupt_all_puts(self) -> None:
         """Interrupts all queues' put calls."""
@@ -477,4 +510,3 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         for q in self.queues.values():
             q.put_interrupt.clear()
             q.get_interrupt.clear()
-        

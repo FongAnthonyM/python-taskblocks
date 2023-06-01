@@ -304,3 +304,17 @@ class AsyncQueue(Queue, AsyncQueueInterface):
 
         # Interruption leads to an error.
         raise InterruptedError
+
+    def join(self) -> None:
+        """Blocks until all items in the Queue have been gotten and the registry is updated."""
+        while self.qsize() > 0:
+            pass
+
+    async def join_async(self, interval: float = 0.0) -> None:
+        """Asynchronously, blocks until all items in the Queue have been gotten and the registry is updated.
+
+        Args:
+            interval: The time, in seconds, between each queue check.
+        """
+        while self.qsize() > 0:
+            await sleep(interval)
