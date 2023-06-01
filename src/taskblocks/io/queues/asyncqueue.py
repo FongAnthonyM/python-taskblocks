@@ -70,7 +70,7 @@ class AsyncQueue(Queue, AsyncQueueInterface):
         state = self.__dict__.copy()
         for name in self._ignore_attributes:
             del state[name]
-        return (Queue.__getstate__(self), state)
+        return Queue.__getstate__(self), state
 
     def __setstate__(self, state: Any) -> None:
         """Builds this object based on a dictionary of corresponding attributes.

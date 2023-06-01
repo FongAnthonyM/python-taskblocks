@@ -231,6 +231,7 @@ class ArrayQueue(AsyncQueue):
             size: The number of bytes to add to this queue.
             block: Determines if this method will block execution to wait for enough bytes-space to add bytes.
             timeout: The time, in seconds, to wait for enough bytes-space to add.
+            interval: The time, in seconds, between each bytes check.
 
         Raises:
             Full: When there is not enough bytes-space to add to the queue when not blocking or on timing out.
@@ -551,4 +552,27 @@ class ArrayQueue(AsyncQueue):
             interval: The time, in seconds, between each access check.
         """
         await super().put_async(await self.serialize_async(obj), timeout=timeout, interval=interval)
+        self.update_registry()
+
+    def join_registry(self) -> None:
+        """Blocks until all items in the Queue have been gotten and the registry is updated."""
+        previous = self.qsize()
+        while current := self.qsize() > 0:
+            if current < previous:
+                self.update_registry()
+            previous = current
+        self.update_registry()
+
+    async def join_registry_async(self, interval: float = 0.0) -> None:
+        """Asynchronously, blocks until all items in the Queue have been gotten and the registry is updated.
+
+        Args:
+            interval: The time, in seconds, between each queue check.
+        """
+        previous = self.qsize()
+        while current := self.qsize() > 0:
+            if current < previous:
+                self.update_registry()
+            previous = current
+            await sleep(interval)
         self.update_registry()
