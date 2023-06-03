@@ -38,6 +38,7 @@ def get_pyproject_as_setup():
             version = version["version"]
 
         if '^' in version:
+            version = version.lstrip('^')
             setup_info["requires"].append(f"{package}>={version}")
         elif '=' in version or '>' in version or '<' in version:
             setup_info["requires"].append(f"{package}{version}")
@@ -51,6 +52,7 @@ def get_pyproject_as_setup():
             version = version["version"]
 
         if '^' in version:
+            version = version.lstrip('^')
             setup_info["extras"].append(f"{package}>={version}")
         elif '=' in version or '>' in version or '<' in version:
             setup_info["extras"].append(f"{package}{version}")
@@ -72,7 +74,5 @@ setup(
     py_modules=[splitext(basename(path))[0] for path in glob("src/*.py")],
     python_requires=setup_info["python"],
     install_requires=setup_info["requires"],
-    extras_require={
-        "dev": setup_info["extras"],
-    },
+    # extras_require={"dev": setup_info["extras"],},
 )
