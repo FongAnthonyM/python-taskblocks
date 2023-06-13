@@ -32,7 +32,6 @@ from src.taskblocks.io.queues.arrayqueue import ArrayQueue
 # Classes #
 class TestArrayQueue:
     class ExampleTaskBlock(TaskBlock):
-
         def construct_io(self) -> None:
             self.outputs.events["setup_check"] = AsyncEvent()
             self.outputs.events["teardown_check"] = AsyncEvent()
@@ -69,7 +68,9 @@ class TestArrayQueue:
 
     def test_run_in_async_loop(self):
         task = self.ExampleTaskBlock()
-        task.inputs.queues["main_input"].put_single(1, )
+        task.inputs.queues["main_input"].put_single(
+            1,
+        )
 
         asyncio.run(self.in_async_loop(task))
         task.join()
@@ -84,10 +85,14 @@ class TestArrayQueue:
         task.start()
         assert task.outputs.events["setup_check"].wait()
 
-        task.inputs.queues["main_input"].put_single(1, )
+        task.inputs.queues["main_input"].put_single(
+            1,
+        )
         assert task.outputs.queues["main_output"].get_single() == 2
 
-        task.inputs.queues["main_input"].put_single(2, )
+        task.inputs.queues["main_input"].put_single(
+            2,
+        )
         assert task.outputs.queues["main_output"].get_single() == 3
 
         task.stop()
@@ -134,8 +139,6 @@ class TestArrayQueue:
 
         assert a_size == held_size
         assert empty_size == 0
-
-
 
 
 # Main #

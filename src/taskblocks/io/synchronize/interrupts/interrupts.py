@@ -34,6 +34,7 @@ class Interrupts(BaseDict):
         *args: Arguments for inheritance.
         **kwargs: Keyword arguments for inheritance.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(self, dict_: dict | None = None, /, *args, **kwargs) -> None:

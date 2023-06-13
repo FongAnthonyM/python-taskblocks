@@ -36,6 +36,7 @@ class SharedMemory(SharedMemory_):
         size: The number of bytes for this SharedMemory to allocate.
         register: Determines if the SharedMemory will be registered to help deallocate it when the process dies.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(self, name: str | None = None, create: bool = False, size: int = 0, register: bool = True) -> None:

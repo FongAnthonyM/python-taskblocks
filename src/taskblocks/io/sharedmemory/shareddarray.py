@@ -48,6 +48,7 @@ class SharedArray(StaticWrapper):
         register: Determines if the SharedMemory will be registered to help deallocate it when the process dies.
         init: Determines if this object should be initialized.
     """
+
     _wrapped_types: list[type | object] = [np.ndarray]
     _wrap_attributes: list[str] = ["array"]
     _exclude_attributes: set[str] = StaticWrapper._exclude_attributes | {"__array_ufunc__"}
@@ -215,10 +216,7 @@ class SharedArray(StaticWrapper):
             self._shared_memory = self.shared_memory_type(name=name, register=register)
         except (FileNotFoundError, ValueError):
             self._shared_memory = self.shared_memory_type(
-                name=name,
-                create=True,
-                size=int(np.dtype(dtype).itemsize * np.prod(shape)),
-                register=register
+                name=name, create=True, size=int(np.dtype(dtype).itemsize * np.prod(shape)), register=register
             )
 
         self._array = np.ndarray(

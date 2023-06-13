@@ -26,7 +26,7 @@ from ..synchronize import Interrupts
 # Classes #
 class IOManager(ChainMap):
     """Extends ChainMap to hold Input and Output objects with methods to manage them.
-    
+
     Attributes:
         interrupts: A container for interrupts.
         general: A container for uncategorized IO objects.
@@ -34,10 +34,11 @@ class IOManager(ChainMap):
         queues: A container for Queues.
         events: A container for Events.
         managers: A container for Managers.
-        
+
     Args:
         maps: Dictionary to append to the end of the chain map.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(self, *maps: dict[str, Any]):
@@ -62,7 +63,7 @@ class IOManager(ChainMap):
         self.queues.clear()
         self.pipes.clear()
         self.managers.clear()
-        
+
     def interrupt_all(self) -> None:
         """Interrupts all IO object."""
         for e in self.events.values():
@@ -72,7 +73,7 @@ class IOManager(ChainMap):
                 wait_interrupt.set()
             if hold_interrupt is not None:
                 hold_interrupt.set()
-        
+
         for q in self.queues.values():
             interrupt_all = getattr(q, "interrupt_all", None)
             get_interrupt = getattr(q, "get_interrupt", None)

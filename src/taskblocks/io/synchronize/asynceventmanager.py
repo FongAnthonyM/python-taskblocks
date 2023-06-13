@@ -51,6 +51,7 @@ class AsyncEventManager(MethodMultiplexObject):
         init: Determines if this object should be initialized.
         **kwargs: Keyword arguments for inheritance.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(
@@ -63,7 +64,7 @@ class AsyncEventManager(MethodMultiplexObject):
     ) -> None:
         # New Attributes #
         self.primary_event: str = ""
-        
+
         self.events: OrderableDict[str, Any] = OrderableDict()
         self._event_cycle: cycle | None = None
 
@@ -84,7 +85,7 @@ class AsyncEventManager(MethodMultiplexObject):
         # Construction #
         if init:
             self.construct(events=events, primary=primary, *args, **kwargs)
-            
+
     @property
     def event_cycle(self) -> cycle:
         """A cycle of the contained events"""
@@ -112,10 +113,10 @@ class AsyncEventManager(MethodMultiplexObject):
     # Instance Methods #
     # Constructors/Destructors
     def construct(
-        self, 
+        self,
         events: dict[str, Any] | None = None,
         primary: str | None = None,
-        *args: Any, 
+        *args: Any,
         **kwargs: Any,
     ) -> None:
         """Constructs this object.
@@ -128,7 +129,7 @@ class AsyncEventManager(MethodMultiplexObject):
         """
         if events is not None:
             self.events.update(events)
-            
+
         if primary is not None:
             self.primary_event = primary
 
@@ -197,18 +198,18 @@ class AsyncEventManager(MethodMultiplexObject):
     # Is Set
     def is_set_single(self, name: str | None = None) -> bool:
         """Checks if an event is set.
-        
+
         Args:
             name: The event to check.
-        
+
         Returns:
             All the events "is set" state.
         """
         return self.events[name or self.primary_event].is_set()
-    
+
     def is_set_dict(self) -> dict[str, bool]:
         """Returns a dictionary with all results of an is_set check for each event.
-        
+
         Returns:
             All the events "is set" state.
         """
@@ -216,7 +217,7 @@ class AsyncEventManager(MethodMultiplexObject):
 
     def all_is_set(self) -> bool:
         """Checks if all the events are set.
-        
+
         Returns:
             If all the events are set.
         """
@@ -340,9 +341,10 @@ class AsyncEventManager(MethodMultiplexObject):
         Returns:
             Awaitable tasks for each event.
         """
-        return {n: create_task(event.wait_async(timeout=timeout, interval=interval)) for n, event in
-                self.events.items()}
-    
+        return {
+            n: create_task(event.wait_async(timeout=timeout, interval=interval)) for n, event in self.events.items()
+        }
+
     # Hold
     def hold_single(self, name: str | None = None, timeout: float | None = 0.0) -> Any:
         """Waits for an event to be changed to cleared.
@@ -350,7 +352,7 @@ class AsyncEventManager(MethodMultiplexObject):
         Args:
             name: The event to hold.
             timeout: The time, in seconds, to wait for an event to be changed to cleared.
-        
+
         Returns:
             If this method successful waited for cleared or failed to a timeout.
         """
@@ -368,7 +370,7 @@ class AsyncEventManager(MethodMultiplexObject):
             name: The event to hold.
             timeout: The time, in seconds, to wait for an event to be changed to cleared.
             interval: The time, in seconds, between each event check.
-        
+
         Returns:
             If this method successful waited for cleared or failed to a timeout.
         """
@@ -379,7 +381,7 @@ class AsyncEventManager(MethodMultiplexObject):
 
         Args:
             timeout: The time, in seconds, to wait for an event to be changed to cleared.
-        
+
         Returns:
             If this method successful waited for cleared or failed to a timeout.
         """
@@ -395,7 +397,7 @@ class AsyncEventManager(MethodMultiplexObject):
         Args:
             timeout: The time, in seconds, to wait for an event to be changed to cleared.
             interval: The time, in seconds, between each event check.
-        
+
         Returns:
             If this method successful waited for cleared or failed to a timeout.
 
@@ -412,7 +414,7 @@ class AsyncEventManager(MethodMultiplexObject):
                     raise TimeoutError
 
                 items[n] = await event.hold_async(interval=interval)
-        
+
             return items
 
     def hold_all_tasks(self, timeout: float | None = None, interval: float = 0.0) -> dict[str, Task]:
@@ -425,8 +427,10 @@ class AsyncEventManager(MethodMultiplexObject):
         Returns:
             Awaitable tasks for each event.
         """
-        return {n: create_task(event.hold_async(timeout=timeout, interval=interval)) for n, event in self.events.items()}
-        
+        return {
+            n: create_task(event.hold_async(timeout=timeout, interval=interval)) for n, event in self.events.items()
+        }
+
     # Interrupt
     def interrupt_all_waits(self) -> None:
         """Interrupts all events' wait calls."""
@@ -437,7 +441,7 @@ class AsyncEventManager(MethodMultiplexObject):
         """Clears wait interrupts in all events."""
         for event in self.events.values():
             event.wait_interrupt.clear()
-            
+
     def interrupt_all_holds(self) -> None:
         """Interrupts all events' hold calls."""
         for event in self.events.values():
@@ -447,16 +451,15 @@ class AsyncEventManager(MethodMultiplexObject):
         """Clears hold interrupts in all events."""
         for event in self.events.values():
             event.hold_interrupt.clear()
-    
+
     def interrupt_all(self) -> None:
         """Interrupts all events."""
         for event in self.events.values():
             event.wait_interrupt.set()
             event.hold_interrupt.set()
-            
+
     def uninterrupt_all(self) -> None:
         """Clears all interrupts in all events."""
         for event in self.events.values():
             event.wait_interrupt.clear()
             event.hold_interrupt.clear()
-        

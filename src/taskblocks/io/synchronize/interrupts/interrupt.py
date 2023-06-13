@@ -34,6 +34,7 @@ class Interrupt(AsyncEvent):
         parent: An Event which, if set, will also set this interrupt.
         ctx: The context for the Python multiprocessing.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(self, parent: Event | None = None, *, ctx: BaseContext | None = None) -> None:

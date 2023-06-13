@@ -1,4 +1,4 @@
-""" sharedmemoryregister.py
+"""sharedmemoryregister.py
 A register of SharedMemory shared_memories which can also unlink them as needed.
 """
 # Package Header #
@@ -64,8 +64,9 @@ class SharedMemoryRegister(BaseObject):
     # Instance Methods #
     # Constructors/Destructors
     def construct(
-        self, sms: Iterable[str, ...] | Iterable[SharedMemory, ...] | None = None, 
-        *args: Any, 
+        self,
+        sms: Iterable[str, ...] | Iterable[SharedMemory, ...] | None = None,
+        *args: Any,
         **kwargs: Any,
     ) -> None:
         """Constructs this object.
@@ -95,8 +96,8 @@ class SharedMemoryRegister(BaseObject):
     def deregister_shared_memory(self, sms: SharedMemory | str) -> None:
         """Deregisters the supplied SharedMemory to this register.
 
-         Args:
-            sms: The SharedMemory or its name to remove from the register.
+        Args:
+           sms: The SharedMemory or its name to remove from the register.
         """
         del self.shared_memories[sms if isinstance(sms, str) else sms.name]
 

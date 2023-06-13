@@ -36,6 +36,7 @@ class AsyncEvent(Event):
     Args:
         ctx: The context for the Python multiprocessing.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(self, *, ctx: BaseContext | None = None) -> None:

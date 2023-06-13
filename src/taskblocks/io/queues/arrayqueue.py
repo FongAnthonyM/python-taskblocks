@@ -59,6 +59,7 @@ class ArrayQueueItem(NamedTuple):
         delete: Determines if the SharedArray will be deleted after deserialization.
         as_item: Determines if this object will be returned rather than deserialized.
     """
+
     array: SharedArray
     copy: bool
     delete: bool
@@ -100,12 +101,13 @@ class ArrayQueue(AsyncQueue):
         bytes_wait: Determines if this queue will wait for the byte-space to enqueue an item.
         ctx: The context for the Python multiprocessing.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(
         self,
         maxsize: int = 0,
-        maxbytes: int = 10 ** 10,  # 10 Gigabytes
+        maxbytes: int = 10**10,  # 10 Gigabytes
         bytes_wait: bool = False,
         *,
         ctx: BaseContext | None = None,
@@ -125,7 +127,7 @@ class ArrayQueue(AsyncQueue):
         self.maxbytes = maxbytes
         with self._n_bytes:
             self._n_bytes.value = 0
-            
+
         with self._unprocessed:
             self._unprocessed.value = 0
 
@@ -217,12 +219,12 @@ class ArrayQueue(AsyncQueue):
                     raise Full
 
         raise InterruptedError
-    
+
     async def _add_bytes_async(
-        self, 
-        size: int, 
-        block: bool = True, 
-        timeout: float | None = None,  
+        self,
+        size: int,
+        block: bool = True,
+        timeout: float | None = None,
         interval: float = 0.0,
     ) -> None:
         """Asynchronously adds bytes to the queue total if there is enough bytes-space.
@@ -284,7 +286,7 @@ class ArrayQueue(AsyncQueue):
         with self._unprocessed:
             unprocessed = self._unprocessed.value
 
-        for n in list(memories)[0: len(memories) - unprocessed]:
+        for n in list(memories)[0 : len(memories) - unprocessed]:
             memories.pop(n)
 
     # Serialization

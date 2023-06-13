@@ -46,6 +46,7 @@ class AsyncQueue(Queue, AsyncQueueInterface):
         space_wait: Determines if this queue will wait for the queue space to enqueue an item.
         ctx: The context for the Python multiprocessing.
     """
+
     _ignore_attributes: set[str] = set(Queue(ctx=get_context()).__dict__.keys())
 
     # Magic Methods #

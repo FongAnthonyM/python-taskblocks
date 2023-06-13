@@ -54,6 +54,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         init: Determines if this object should be initialized.
         **kwargs: Keyword arguments for inheritance.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(
@@ -66,16 +67,16 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
     ) -> None:
         # New Attributes #
         self.primary_queue: str = ""
-        
+
         self.queues: OrderableDict[str, AsyncQueueInterface] = OrderableDict()
         self._queue_cycle: cycle | None = None
 
         self.put_bytes: MethodMultiplexer = MethodMultiplexer(instance=self, select="put_bytes_all")
         self.put_bytes_async: MethodMultiplexer = MethodMultiplexer(instance=self, select="put_bytes_all_async")
-        
+
         self.get: MethodMultiplexer = MethodMultiplexer(instance=self, select="get_all")
         self.get_async: MethodMultiplexer = MethodMultiplexer(instance=self, select="get_all_async")
-        
+
         self.put: MethodMultiplexer = MethodMultiplexer(instance=self, select="put_all")
         self.put_async: MethodMultiplexer = MethodMultiplexer(instance=self, select="put_all_async")
 
@@ -88,7 +89,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         # Construction #
         if init:
             self.construct(queues=queues, primary=primary, *args, **kwargs)
-            
+
     @property
     def queue_cycle(self) -> cycle:
         """A cycle of the contained queues"""
@@ -116,10 +117,10 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
     # Instance Methods #
     # Constructors/Destructors
     def construct(
-        self, 
+        self,
         queues: dict[str, Any] | None = None,
         primary: str | None = None,
-        *args: Any, 
+        *args: Any,
         **kwargs: Any,
     ) -> None:
         """Constructs this object.
@@ -132,7 +133,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         """
         if queues is not None:
             self.queues.update(queues)
-            
+
         if primary is not None:
             self.primary_queue = primary
 
@@ -201,7 +202,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
     # Object Query
     def empty(self) -> dict[str, bool]:
         """Returns a dictionary with all results of an empty check for each queue.
-        
+
         Returns:
             All the queues "is empty" state.
         """
@@ -209,7 +210,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
 
     def all_empty(self) -> bool:
         """Checks if all the queues are empty.
-        
+
         Returns:
             If all the queues are empty.
         """
@@ -230,7 +231,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         Args:
             name: The queue to get an item from.
             timeout: The time, in seconds, to wait for an item in the queue.
-        
+
         Returns:
             The requested item.
         """
@@ -248,7 +249,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
             name: The queue to get an item from.
             timeout: The time, in seconds, to wait for an item in the queue.
             interval: The time, in seconds, between each queue check.
-        
+
         Returns:
             The requested item.
         """
@@ -259,7 +260,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
 
         Args:
             timeout: The time, in seconds, to wait for an item in the queue.
-        
+
         Returns:
             The requested items.
         """
@@ -275,7 +276,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         Args:
             timeout: The time, in seconds, to wait for an item in each queue.
             interval: The time, in seconds, between each queue check.
-        
+
         Returns:
             The requested items.
 
@@ -292,7 +293,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
                     raise TimeoutError
 
                 items[n] = await q.get_async(interval=interval)
-        
+
             return items
 
     def get_all_tasks(self, timeout: float | None = None, interval: float = 0.0) -> dict[str, Task]:
@@ -350,7 +351,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         """
         for q in self.queues.values():
             q.put_bytes(buf, offset, size)
-            
+
     async def put_bytes_all_async(
         self,
         buf: bytes,
@@ -378,7 +379,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
                     raise TimeoutError
 
                 await q.put_bytes_async(buf, offset, size, interval=interval)
-    
+
     # Put
     def put_single(self, obj: Any, name: str | None = None) -> None:
         """Puts an object into a queue, waits for access to the queue.
@@ -388,7 +389,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
             name: The queue to put an item into.
         """
         self.queues[name or self.primary_queue].put(obj)
-        
+
     async def put_single_async(self, obj: Any, name: str | None = None) -> None:
         """Asynchronously puts an object into a queue, waits for access to the queue.
 
@@ -488,7 +489,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         """Clears put interrupts in all queues."""
         for q in self.queues.values():
             q.put_interrupt.clear()
-            
+
     def interrupt_all_gets(self) -> None:
         """Interrupts all queues' get calls."""
         for q in self.queues.values():
@@ -498,13 +499,13 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         """Clears get interrupts in all queues."""
         for q in self.queues.values():
             q.get_interrupt.clear()
-    
+
     def interrupt_all(self) -> None:
         """Interrupts all queues."""
         for q in self.queues.values():
             q.put_interrupt.set()
             q.get_interrupt.set()
-            
+
     def uninterrupt_all(self) -> None:
         """Clears all interrupts in all queues."""
         for q in self.queues.values():

@@ -64,6 +64,7 @@ class TaskBlock(MethodMultiplexObject):
         init: Determines if this object should be initialized.
         **kwargs: Keyword arguments for inheritance.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(
@@ -303,7 +304,7 @@ class TaskBlock(MethodMultiplexObject):
             await self._teardown(*args, **(self.teardown_kwargs | kwargs))
         else:
             self._teardown(*args, **(self.teardown_kwargs | kwargs))
-    
+
     # Run TaskBlock Once
     async def _run(
         self,

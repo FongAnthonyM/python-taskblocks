@@ -34,6 +34,7 @@ class TaskUnit(NamedTuple):
         pre_setup: Determines if the setup will be run before the other tasks start execution.
         post_teardown: Determines if the teardown will be run after the other tasks finish execution.
     """
+
     task: TaskBlock
     execute_method: str
     pre_setup: bool
@@ -68,6 +69,7 @@ class TaskBlockGroup(BaseDict, TaskBlock):
         init: Determines if this object should be initialized.
         **kwargs: Keyword arguments for inheritance.
     """
+
     unit_type: type[TaskUnit] = TaskUnit
 
     # Magic Methods #

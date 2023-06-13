@@ -46,6 +46,7 @@ class SimplexPipeManager(BaseObject):
         init: Determines if this object should be initialized.
         **kwargs: Keyword arguments for inheritance.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(
@@ -125,7 +126,7 @@ class SimplexPipeManager(BaseObject):
 
         Args:
             name: The shared_memories of the connection to manage.
-            
+
         Returns
             The requested receive and send connections.
         """
@@ -134,11 +135,11 @@ class SimplexPipeManager(BaseObject):
     # Object Query
     def poll(self, name: str, timeout: float | None = 0.0) -> bool:
         """Polls the named receive connection.
-        
+
         Args:
             name: The name of the receive connection to poll.
             timeout: The time, in seconds, to wait for the connection poll.
-        
+
         Returns:
             If there is something in the connection.
         """
@@ -149,7 +150,7 @@ class SimplexPipeManager(BaseObject):
 
         Args:
             timeout: The time, in seconds, to wait for the connection poll.
-        
+
         Returns:
             All poll results for each receive connection.
         """

@@ -47,6 +47,7 @@ class LockedSharedArray(SharedArray):
         order: Row-major (C-style) or column-major (Fortran-style) order.
         init: Determines if this object should be initialized.
     """
+
     shared_memory_type: type[LockedSharedMemory] = LockedSharedMemory
 
     # Class Methods #
@@ -141,15 +142,7 @@ class LockedSharedArray(SharedArray):
 
         # Construct #
         if init:
-            self.construct(
-                a=a,
-                shape=shape,
-                name=name,
-                dtype=dtype,
-                offset=offset,
-                strides=strides,
-                order=order
-            )
+            self.construct(a=a, shape=shape, name=name, dtype=dtype, offset=offset, strides=strides, order=order)
 
     @property
     def lock(self) -> AsyncLock | None:
@@ -249,7 +242,7 @@ class LockedSharedArray(SharedArray):
         """Releases the lock."""
         self._acquired = False
         self.lock.release()
-    
+
     @contextmanager
     async def async_context(
         self,

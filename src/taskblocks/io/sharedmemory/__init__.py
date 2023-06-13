@@ -24,4 +24,3 @@ except ModuleNotFoundError:
 else:
     from .shareddarray import SharedArray
     from .lockedsharedarray import LockedSharedArray
-

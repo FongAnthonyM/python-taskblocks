@@ -29,7 +29,6 @@ from src.taskblocks import TaskBlock, AsyncEvent, SimpleAsyncQueue, SimpleAsyncQ
 # Classes #
 class TestTask:
     class ExampleTaskBlock(TaskBlock):
-
         def construct_io(self) -> None:
             self.inputs.queues["main_input"] = SimpleAsyncQueue()
 
@@ -65,7 +64,9 @@ class TestTask:
 
     def test_run(self):
         task = self.ExampleTaskBlock()
-        task.inputs.queues["main_input"].put_single(1, )
+        task.inputs.queues["main_input"].put_single(
+            1,
+        )
 
         task.run()
         task.join()
@@ -76,7 +77,9 @@ class TestTask:
 
     def test_run_in_async_loop(self):
         task = self.ExampleTaskBlock()
-        task.inputs.queues["main_input"].put_single(1, )
+        task.inputs.queues["main_input"].put_single(
+            1,
+        )
 
         asyncio.run(self.in_async_loop(task))
         task.join()
@@ -91,18 +94,20 @@ class TestTask:
         task.start()
         assert task.outputs.events["setup_check"].wait()
 
-        task.inputs.queues["main_input"].put_single(1, )
+        task.inputs.queues["main_input"].put_single(
+            1,
+        )
         assert task.outputs.queues["main_output"].get_single() == 2
 
-        task.inputs.queues["main_input"].put_single(2, )
+        task.inputs.queues["main_input"].put_single(
+            2,
+        )
         assert task.outputs.queues["main_output"].get_single() == 3
 
         task.stop()
         assert task.outputs.events["teardown_check"].wait()
 
         task.join()
-
-
 
 
 # Main #

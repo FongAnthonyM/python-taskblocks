@@ -1,13 +1,13 @@
 # Imports for the example
-from datetime import datetime
 import time
+from datetime import datetime
 
-from taskblocks import TaskBlock, AsyncEvent, AsyncQueue
-
+from taskblocks import AsyncEvent
+from taskblocks import AsyncQueue
+from taskblocks import TaskBlock
 
 
 class ExampleTaskBlock(TaskBlock):
-
     def construct_io(self) -> None:
         """Constructs the I/O for this TaskBlock."""
         # Inputs
@@ -54,10 +54,9 @@ class ExampleTaskBlock(TaskBlock):
         self.inputs.queues["main_input"].get_interrupt.set()  # Interrupt the task so it can escape out.
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Create TaskBlock object
     task = ExampleTaskBlock(is_process=True)
-
 
     # Start TaskBlock in separate process and print when setup is complete
     print(f"{datetime.now().strftime('%H:%M:%S.%f')}: Setup event is {task.outputs.events['setup_check'].is_set()}")
@@ -66,7 +65,6 @@ if __name__ == '__main__':
     task.outputs.events["setup_check"].wait()
 
     print(f"{datetime.now().strftime('%H:%M:%S.%f')}: Setup event is {task.outputs.events['setup_check'].is_set()}\n")
-
 
     # Put some data on the queue and let the TaskBlock process it
     print(f"{datetime.now().strftime('%H:%M:%S.%f')}: Putting items on the queue")
@@ -81,11 +79,14 @@ if __name__ == '__main__':
     out = task.outputs.queues["main_output"].get()
     print(f"{datetime.now().strftime('%H:%M:%S.%f')}: {out} was returned from the TaskBlock\n")
 
-
     # Tells the TaskBlock to stop and print when teardown is complete
-    print(f"{datetime.now().strftime('%H:%M:%S.%f')}: Teardown event is {task.outputs.events['teardown_check'].is_set()}")
+    print(
+        f"{datetime.now().strftime('%H:%M:%S.%f')}: Teardown event is {task.outputs.events['teardown_check'].is_set()}"
+    )
 
     task.stop()
     task.outputs.events["teardown_check"].wait()
 
-    print(f"{datetime.now().strftime('%H:%M:%S.%f')}: Teardown event is {task.outputs.events['teardown_check'].is_set()}\n")
+    print(
+        f"{datetime.now().strftime('%H:%M:%S.%f')}: Teardown event is {task.outputs.events['teardown_check'].is_set()}\n"
+    )
