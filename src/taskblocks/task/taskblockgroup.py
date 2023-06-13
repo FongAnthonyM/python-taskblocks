@@ -34,13 +34,14 @@ class TaskUnit(NamedTuple):
         pre_setup: Determines if the setup will be run before the other tasks start execution.
         post_teardown: Determines if the teardown will be run after the other tasks finish execution.
     """
+
     task: TaskBlock
     execute_method: str
     pre_setup: bool
     post_teardown: bool
 
 
-class TaskBlockGroup(TaskBlock, BaseDict):
+class TaskBlockGroup(BaseDict, TaskBlock):
     """A TaskBlock that contains other Tasks and executes them.
 
     TaskBlock Group contains TaskUnits rather Tasks because each task has some external execution information required to
@@ -68,6 +69,7 @@ class TaskBlockGroup(TaskBlock, BaseDict):
         init: Determines if this object should be initialized.
         **kwargs: Keyword arguments for inheritance.
     """
+
     unit_type: type[TaskUnit] = TaskUnit
 
     # Magic Methods #
@@ -91,7 +93,7 @@ class TaskBlockGroup(TaskBlock, BaseDict):
         self._execution_order: tuple[str, ...] = ()
 
         # Parent Attributes #
-        super().__init__(*args, init=False, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Construct #
         if init:
@@ -247,12 +249,12 @@ class TaskBlockGroup(TaskBlock, BaseDict):
                 self.data[name] = unit
             elif isinstance(unit, dict):
                 self.data[name] = self.create_unit(**unit)
-            else:
+            elif isinstance(unit, TaskBlock):
                 self.data[name] = self.create_unit(unit)
 
     # Setup
-    async def setup(self, *args: Any, **kwargs: Any) -> None:
-        """Setup this object and the contained tasks if they are setting up early."""
+    async def setup_tasks(self) -> None:
+        """Setup the contained tasks if they are setting up early."""
         # Execute the setup of the tasks if they have pre-setup
         for name in self.execution_order:
             unit = self.data[name]
@@ -267,20 +269,98 @@ class TaskBlockGroup(TaskBlock, BaseDict):
         # Execute all tasks
         for name in self.execution_order:
             unit = self.data[name]
-            awaitable = getattr(unit.task, unit.excute_method)()
+            awaitable = getattr(unit.task, unit.execute_method)()
             if awaitable is not None:
                 async_tasks.append(awaitable)
 
         await gather(*async_tasks)
 
     # Teardown
-    async def teardown(self, *args: Any, **kwargs: Any) -> None:
-        """Teardown this object and the contained tasks if they are tearing down late."""
+    async def teardown_tasks(self) -> None:
+        """Teardown contained tasks if they are tearing down late."""
         # Execute the teardown of the tasks if they have post-teardown
         for name in self.execution_order:
             unit = self.data[name]
-            if unit.pre_teardown:
+            if unit.post_teardown:
                 await unit.task.teardown_async()
+
+    # Run TaskBlock Once
+    async def _run(
+        self,
+        s_kwargs: dict[str, Any] | None = None,
+        t_kwargs: dict[str, Any] | None = None,
+        d_kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Executes a single run of the task.
+
+        Args:
+            s_kwargs: The keyword arguments for task setup.
+            t_kwargs: The keyword arguments for the task.
+            d_kwargs: The keyword arguments for task teardown.
+        """
+        # Flag On
+        self._alive_event.set()
+
+        # Optionally Setup
+        if self.sets_up:
+            await self.setup_async(**(s_kwargs or {}))
+            await self.setup_tasks()
+
+        # Run TaskBlock
+        if self._task.is_coroutine:
+            await self._task(**(self.task_kwargs | (t_kwargs or {})))
+        else:
+            await self.task_async(**(self.task_kwargs | (t_kwargs or {})))
+
+        # Optionally Teardown
+        if self.tears_down:
+            await self.teardown_async(**(d_kwargs or {}))
+            await self.teardown_tasks()
+
+        # Wait for any remaining Futures
+        for future in self.futures:
+            await future
+
+        # Flag Off
+        self._alive_event.clear()
+
+    # Start TaskBlock Loop
+    async def _start(
+        self,
+        s_kwargs: dict[str, Any] | None = None,
+        t_kwargs: dict[str, Any] | None = None,
+        d_kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Starts the continuous execution of the task.
+
+        Args:
+            s_kwargs: The keyword arguments for task setup.
+            t_kwargs: The keyword arguments for the task.
+            d_kwargs: The keyword arguments for task teardown.
+        """
+        # Flag On
+        self._alive_event.set()
+        self.loop_event.set()
+
+        # Optionally Setup
+        if self.sets_up:
+            await self.setup_async(**(s_kwargs or {}))
+            await self.setup_tasks()
+
+        # Loop TaskBlock
+        await self.loop_task(**(self.task_kwargs | (t_kwargs or {})))
+
+        # Optionally Teardown
+        if self.tears_down:
+            await self.teardown_async(**(d_kwargs or {}))
+            await self.teardown_tasks()
+
+        # Wait for any remaining Futures
+        for future in self.futures:
+            await future
+
+        # Flag Off
+        self._alive_event.clear()
 
     # Joins
     def join_tasks(self, timeout: float | None = None) -> None:

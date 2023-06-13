@@ -2,7 +2,7 @@
 Extends ChainMap to hold Input and Output objects with methods to manage them.
 """
 # Package Header #
-from ..header import *
+from ...header import *
 
 # Header #
 __author__ = __author__
@@ -19,14 +19,14 @@ from typing import Any
 # Third-Party Packages #
 
 # Local Packages #
-from .interrupt import Interrupts
+from ..synchronize import Interrupts
 
 
 # Definitions #
 # Classes #
 class IOManager(ChainMap):
     """Extends ChainMap to hold Input and Output objects with methods to manage them.
-    
+
     Attributes:
         interrupts: A container for interrupts.
         general: A container for uncategorized IO objects.
@@ -34,10 +34,11 @@ class IOManager(ChainMap):
         queues: A container for Queues.
         events: A container for Events.
         managers: A container for Managers.
-        
+
     Args:
         maps: Dictionary to append to the end of the chain map.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(self, *maps: dict[str, Any]):
@@ -62,7 +63,7 @@ class IOManager(ChainMap):
         self.queues.clear()
         self.pipes.clear()
         self.managers.clear()
-        
+
     def interrupt_all(self) -> None:
         """Interrupts all IO object."""
         for e in self.events.values():
@@ -72,10 +73,13 @@ class IOManager(ChainMap):
                 wait_interrupt.set()
             if hold_interrupt is not None:
                 hold_interrupt.set()
-        
+
         for q in self.queues.values():
+            interrupt_all = getattr(q, "interrupt_all", None)
             get_interrupt = getattr(q, "get_interrupt", None)
             put_interrupt = getattr(q, "put_interrupt", None)
+            if interrupt_all is not None:
+                interrupt_all()
             if get_interrupt is not None:
                 get_interrupt.set()
             if put_interrupt is not None:
@@ -97,8 +101,11 @@ class IOManager(ChainMap):
                 hold_interrupt.clear()
 
         for q in self.queues.values():
+            uninterrupt_all = getattr(q, "uninterrupt_all", None)
             get_interrupt = getattr(q, "get_interrupt", None)
             put_interrupt = getattr(q, "put_interrupt", None)
+            if uninterrupt_all is not None:
+                uninterrupt_all()
             if get_interrupt is not None:
                 get_interrupt.clear()
             if put_interrupt is not None:

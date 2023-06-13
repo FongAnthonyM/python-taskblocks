@@ -2,7 +2,7 @@
 A manager for several multiprocessing Pipes. Has methods for sending and receiving data on all pipes.
 """
 # Package Header #
-from ..header import *
+from ...header import *
 
 # Header #
 __author__ = __author__
@@ -25,7 +25,7 @@ from typing import Any
 from baseobjects import BaseObject
 
 # Local Packages #
-from .interrupt import Interrupt
+from ..synchronize import Interrupt
 
 
 # Definitions #
@@ -40,12 +40,13 @@ class SimplexPipeManager(BaseObject):
         recv_connections: The receive connections within this manager.
 
     Args:
-        names: The names of pipes to create.
+        names: The shared_memories of pipes to create.
         duplex: Determines if the created pipes will be duplexes.
         *args: Arguments for inheritance.
         init: Determines if this object should be initialized.
         **kwargs: Keyword arguments for inheritance.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(
@@ -75,7 +76,7 @@ class SimplexPipeManager(BaseObject):
         """Constructs this object.
 
         Args:
-            names: The names of pipes to create.
+            names: The shared_memories of pipes to create.
             duplex: Determines if the created pipes will be duplexes.
             *args: Arguments for inheritance.
             **kwargs: Keyword arguments for inheritance.
@@ -103,7 +104,7 @@ class SimplexPipeManager(BaseObject):
         """Creates Pipes to manage.
 
         Args:
-            names: The names of the pipes to create.
+            names: The shared_memories of the pipes to create.
             duplex: Determines if the pipes will be duplexes.
         """
         for name in names:
@@ -113,7 +114,7 @@ class SimplexPipeManager(BaseObject):
         """Sets a connection pair to manage.
 
         Args:
-            name: The names of the connection to manage.
+            name: The shared_memories of the connection to manage.
             recv: The receive connection to manage.
             send: The send connection to manage.
         """
@@ -124,8 +125,8 @@ class SimplexPipeManager(BaseObject):
         """Gets a connection pair.
 
         Args:
-            name: The names of the connection to manage.
-            
+            name: The shared_memories of the connection to manage.
+
         Returns
             The requested receive and send connections.
         """
@@ -134,11 +135,11 @@ class SimplexPipeManager(BaseObject):
     # Object Query
     def poll(self, name: str, timeout: float | None = 0.0) -> bool:
         """Polls the named receive connection.
-        
+
         Args:
             name: The name of the receive connection to poll.
             timeout: The time, in seconds, to wait for the connection poll.
-        
+
         Returns:
             If there is something in the connection.
         """
@@ -149,7 +150,7 @@ class SimplexPipeManager(BaseObject):
 
         Args:
             timeout: The time, in seconds, to wait for the connection poll.
-        
+
         Returns:
             All poll results for each receive connection.
         """
@@ -192,6 +193,10 @@ class SimplexPipeManager(BaseObject):
             name: The receive connection to get the bytes from.
             block: Determines if this method will block execution.
             timeout: The time, in seconds, to wait for the bytes.
+
+        Raises:
+            Empty: When there are no items to get in the queue when not blocking or on timing out.
+            InterruptedError: When this method is interrupted by an interrupt event.
         """
         connection = self.recv_connections[name]
         if not block and not connection.poll():

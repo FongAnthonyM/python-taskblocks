@@ -19,36 +19,30 @@ import asyncio
 from typing import Any
 
 # Third-Party Packages #
+import numpy as np
 import pytest
 
 # Local Packages #
-from src.taskblocks import TaskBlock, AsyncEvent, SimpleAsyncQueue, SimpleAsyncQueueManager
+from src.taskblocks import TaskBlock, AsyncEvent
+from src.taskblocks.io.sharedmemory import SharedArray
+from src.taskblocks.io.queues.arrayqueue import ArrayQueue
 
 
 # Definitions #
 # Classes #
-class TestTask:
+class TestArrayQueue:
     class ExampleTaskBlock(TaskBlock):
         def construct_io(self) -> None:
-            self.inputs.queues["main_input"] = SimpleAsyncQueue()
-
             self.outputs.events["setup_check"] = AsyncEvent()
             self.outputs.events["teardown_check"] = AsyncEvent()
-            self.outputs.queues["main_output"] = SimpleAsyncQueueManager(names=("test_one", "test_two"))
-
-        def link_inputs(self, *args: Any, **kwargs: Any) -> None:
-            pass
+            self.outputs.queues["main_output"] = ArrayQueue()
 
         def setup(self, *args: Any, **kwargs: Any) -> None:
             self.outputs.events["setup_check"].set()
 
         async def task(self, *args: Any, **kwargs: Any) -> None:
-            try:
-                in_item = await self.inputs.queues["main_input"].get_async()
-            except InterruptedError:
-                return
 
-            out_item = in_item + 1
+            out_item = (np.ones((100, 100)),)
             await self.outputs.queues["main_output"].put_async(out_item)
 
         def teardown(self, *args: Any, **kwargs: Any) -> None:
@@ -64,9 +58,6 @@ class TestTask:
 
     def test_run(self):
         task = self.ExampleTaskBlock()
-        task.inputs.queues["main_input"].put_single(
-            1,
-        )
 
         task.run()
         task.join()
@@ -108,6 +99,46 @@ class TestTask:
         assert task.outputs.events["teardown_check"].wait()
 
         task.join()
+
+    def test_put_and_get_copy(self):
+        q = ArrayQueue()
+
+        a = np.ones((100000, 10000))
+        a_size = a.nbytes
+
+        q.put(a)
+
+        held_size = q.n_bytes
+
+        new_a = q.get()
+        empty_size = q.n_bytes
+        q.close()
+
+        assert a_size == held_size
+        assert (a == new_a).all()
+        assert empty_size == 0
+
+    def test_put_and_get_no_copy(self):
+        q = ArrayQueue()
+
+        data = np.ones((100000, 10000))
+        a = SharedArray(data)
+        a_size = a.nbytes
+
+        q.put(a)
+
+        held_size = q.n_bytes
+
+        new_a = q.get()
+        empty_size = q.n_bytes
+        new_a
+
+        q.close()
+        a.close()
+        a.unlink()
+
+        assert a_size == held_size
+        assert empty_size == 0
 
 
 # Main #

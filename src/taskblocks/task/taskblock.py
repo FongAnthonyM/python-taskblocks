@@ -13,14 +13,13 @@ __email__ = __email__
 
 # Imports #
 # Standard Libraries #
-from asyncio import run, Task, create_task
+from asyncio import run, Future, Task, create_task
 from asyncio.events import AbstractEventLoop, _get_running_loop
 from typing import Any
 from warnings import warn
 
 # Third-Party Packages #
-from baseobjects import BaseObject
-from baseobjects.functions import CallableMultiplexer
+from baseobjects.functions import MethodMultiplexObject, MethodMultiplexer
 
 # Local Packages #
 from ..io import IOManager, AsyncEvent
@@ -29,7 +28,7 @@ from ..process import ProcessProxy
 
 # Definitions #
 # Classes #
-class TaskBlock(BaseObject):
+class TaskBlock(MethodMultiplexObject):
     """An abstract processing class whose methods can be overwritten to define its functionality.
 
     Attributes:
@@ -47,6 +46,7 @@ class TaskBlock(BaseObject):
 
         inputs: A handler that contains all inputs for this object.
         outputs: A handler that contains all outputs for this object.
+        futures: Futures to await for. Runs after teardown.
 
         _setup: The method to call when this object executes setup.
         _task: The method to call when this object executes the task.
@@ -64,6 +64,7 @@ class TaskBlock(BaseObject):
         init: Determines if this object should be initialized.
         **kwargs: Keyword arguments for inheritance.
     """
+
     # Magic Methods #
     # Construction/Destruction
     def __init__(
@@ -94,13 +95,14 @@ class TaskBlock(BaseObject):
 
         self.inputs: IOManager = IOManager()
         self.outputs: IOManager = IOManager()
+        self.futures: list[Future] = []
 
         self.process: ProcessProxy | None = ProcessProxy()
         self._daemon: bool | None = None
 
-        self._setup: CallableMultiplexer = CallableMultiplexer(instance=self, select="setup")
-        self._task: CallableMultiplexer = CallableMultiplexer(instance=self, select="task")
-        self._teardown: CallableMultiplexer = CallableMultiplexer(instance=self, select="teardown")
+        self._setup: MethodMultiplexer = MethodMultiplexer(instance=self, select="setup")
+        self._task: MethodMultiplexer = MethodMultiplexer(instance=self, select="task")
+        self._teardown: MethodMultiplexer = MethodMultiplexer(instance=self, select="teardown")
 
         # Parent Attributes #
         super().__init__(*args, init=False, **kwargs)
@@ -147,19 +149,20 @@ class TaskBlock(BaseObject):
         Returns:
             dict: A dictionary of this object's attributes.
         """
-        out_dict = self.__dict__.copy()
+        out_dict = super().__getstate__()
         del out_dict["process"]
         return out_dict
 
-    def __setstate__(self, in_dict: dict[str, Any]) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         """Builds this object based on a dictionary of corresponding attributes.
 
         Args:
-            in_dict: The attributes to build this object from.
+            state: The attributes to build this object from.
         """
-        in_dict["process"] = ProcessProxy()
-        self.__dict__ = in_dict
+        state["process"] = ProcessProxy()
+        super().__setstate__(state)
 
+    # Instance Methods #
     # Constructors/Destructors
     def construct(
         self,
@@ -237,11 +240,11 @@ class TaskBlock(BaseObject):
         """Abstract method that constructs the io for this object."""
         pass
 
-    def link_inputs(self, *args: Any, **kwargs: Any) -> None:
+    def link_input(self, *args: Any, **kwargs: Any) -> None:
         """Abstract method that gives a place to the inputs to other objects."""
         pass
 
-    def link_outputs(self, *args: Any, **kwargs: Any) -> None:
+    def link_output(self, *args: Any, **kwargs: Any) -> None:
         """Abstract method that gives a place to the outputs to other objects."""
         pass
 
@@ -281,7 +284,7 @@ class TaskBlock(BaseObject):
             while self.loop_event.is_set():
                 try:
                     await create_task(self._task(*args, **kwargs))
-                except InterruptedError:
+                except InterruptedError as e:
                     warn("TaskBlock interrupted, if intentional, handle in the task.")
         else:
             while self.loop_event.is_set():
@@ -301,7 +304,7 @@ class TaskBlock(BaseObject):
             await self._teardown(*args, **(self.teardown_kwargs | kwargs))
         else:
             self._teardown(*args, **(self.teardown_kwargs | kwargs))
-    
+
     # Run TaskBlock Once
     async def _run(
         self,
@@ -332,6 +335,10 @@ class TaskBlock(BaseObject):
         # Optionally Teardown
         if self.tears_down:
             await self.teardown_async(**(d_kwargs or {}))
+
+        # Wait for any remaining Futures
+        for future in self.futures:
+            await future
 
         # Flag Off
         self._alive_event.clear()
@@ -451,6 +458,10 @@ class TaskBlock(BaseObject):
         # Optionally Teardown
         if self.tears_down:
             await self.teardown_async(**(d_kwargs or {}))
+
+        # Wait for any remaining Futures
+        for future in self.futures:
+            await future
 
         # Flag Off
         self._alive_event.clear()

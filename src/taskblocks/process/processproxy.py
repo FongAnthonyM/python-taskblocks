@@ -55,6 +55,7 @@ class ProcessProxy(BaseObject):
         daemon : Determines if the separate process will continue after the main process exits.
         init: Determines if this object will construct.
     """
+
     CPU_COUNT: int = cpu_count()
 
     # Construction/Destruction
@@ -266,7 +267,7 @@ class ProcessProxy(BaseObject):
         Args:
             timeout: The time, in seconds, to wait for the process to exit.
         """
-        assert self.process is not None, 'can only join a started process'
+        assert self.process is not None, "can only join a started process"
         self.process.join(timeout)
 
     async def join_async(

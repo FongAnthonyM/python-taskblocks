@@ -57,7 +57,7 @@ def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
     """
     assert session.bin is not None  # noqa: S101
 
-    virtualenv = session.env.get("VIRTUAL_ENV")
+    virtualenv = session.env.get_single("VIRTUAL_ENV")
     if virtualenv is None:
         return
 
