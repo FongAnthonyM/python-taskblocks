@@ -477,7 +477,7 @@ class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
         Args:
             interval: The time, in seconds, between each queue check.
         """
-        await gather(q.join_async(interval=interval) for q in self.queues.values())
+        await gather(*(q.join_async(interval=interval) for q in self.queues.values()))
 
     # Interrupt
     def interrupt_all_puts(self) -> None:
