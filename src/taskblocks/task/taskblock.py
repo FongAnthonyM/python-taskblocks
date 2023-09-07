@@ -19,7 +19,7 @@ from typing import Any
 from warnings import warn
 
 # Third-Party Packages #
-from baseobjects.functions import MethodMultiplexObject, MethodMultiplexer
+from baseobjects.functions import CallableMultiplexObject, MethodMultiplexer
 
 # Local Packages #
 from ..io import IOManager, AsyncEvent
@@ -28,7 +28,7 @@ from ..process import ProcessProxy
 
 # Definitions #
 # Classes #
-class TaskBlock(MethodMultiplexObject):
+class TaskBlock(CallableMultiplexObject):
     """An abstract processing class whose methods can be overwritten to define its functionality.
 
     Attributes:
