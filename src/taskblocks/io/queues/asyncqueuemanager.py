@@ -20,7 +20,7 @@ from time import perf_counter
 from typing import Any
 
 # Third-Party Packages #
-from baseobjects.functions import MethodMultiplexObject, MethodMultiplexer
+from baseobjects.functions import CallableMultiplexObject, MethodMultiplexer
 from baseobjects.collections import OrderableDict
 
 # Local Packages #
@@ -33,7 +33,7 @@ SENTINEL = object()
 
 
 # Classes #
-class AsyncQueueManager(MethodMultiplexObject, AsyncQueueInterface):
+class AsyncQueueManager(CallableMultiplexObject, AsyncQueueInterface):
     """A manager for several SimpleAsyncQueues. Has methods for sending and receiving data on all queues.
 
     Attributes:
