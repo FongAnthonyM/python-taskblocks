@@ -185,7 +185,9 @@ class ArrayQueue(AsyncQueue):
         if not block:
             if self._n_bytes.acquire(block=False):
                 try:
-                    if size + self._n_bytes.value <= self.maxbytes:
+                    if size > self.maxbytes:
+                        raise ValueError("Value is to large for queue")
+                    elif size + self._n_bytes.value <= self.maxbytes:
                         self._n_bytes.value += size
                         return
                     else:
@@ -210,7 +212,9 @@ class ArrayQueue(AsyncQueue):
             while not self.add_interrupt.is_set():
                 if self._n_bytes.acquire(block=False):
                     try:
-                        if size + self._n_bytes.value <= self.maxbytes:
+                        if size > self.maxbytes:
+                            raise ValueError("Value is to large for queue")
+                        elif size + self._n_bytes.value <= self.maxbytes:
                             self._n_bytes.value += size
                             return
                     finally:
@@ -256,7 +260,9 @@ class ArrayQueue(AsyncQueue):
             while not self.add_interrupt.is_set():
                 if self._n_bytes.acquire(block=False):
                     try:
-                        if size + self._n_bytes.value <= self.maxbytes:
+                        if size > self.maxbytes:
+                            raise ValueError("Value is to large for queue")
+                        elif size + self._n_bytes.value <= self.maxbytes:
                             self._n_bytes.value += size
                             return
                     finally:
@@ -269,7 +275,9 @@ class ArrayQueue(AsyncQueue):
             while not self.add_interrupt.is_set():
                 if self._n_bytes.acquire(block=False):
                     try:
-                        if size + self._n_bytes.value <= self.maxbytes:
+                        if size > self.maxbytes:
+                            raise ValueError("Value is to large for queue")
+                        elif size + self._n_bytes.value <= self.maxbytes:
                             self._n_bytes.value += size
                             return
                     finally:
